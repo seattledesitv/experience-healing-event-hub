@@ -14,6 +14,17 @@ function linkedInHeaders(token: string, version: string) {
   };
 }
 
+async function getMemberUrn(token: string) {
+  const response = await fetch("https://api.linkedin.com/v2/userinfo", {
+    cache: "no-store",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload?.message || payload?.error_description || `LinkedIn member lookup failed (${response.status}).`);
+  if (!payload.sub) throw new Error("LinkedIn did not return the authenticated member ID.");
+  return `urn:li:person:${payload.sub}`;
+}
+
 export async function POST(request: NextRequest) {
   const supabase = await createSupabaseServerClient();
   const { data: userData } = await supabase.auth.getUser();
@@ -24,11 +35,8 @@ export async function POST(request: NextRequest) {
   if (!eventId) return NextResponse.json({ error: "eventId is required." }, { status: 400 });
 
   const token = process.env.LINKEDIN_ACCESS_TOKEN;
-  const organizationUrn = process.env.LINKEDIN_ORGANIZATION_URN;
   const version = process.env.LINKEDIN_API_VERSION || "202606";
-  if (!token || !organizationUrn) {
-    return NextResponse.json({ error: "LinkedIn credentials are not configured." }, { status: 400 });
-  }
+  if (!token) return NextResponse.json({ error: "LinkedIn access token is not configured." }, { status: 400 });
 
   const [{ data: event, error: eventError }, { data: publication, error: publicationError }] = await Promise.all([
     supabase.from("events").select("id,title,cover_image_url,linkedin_caption,hashtags").eq("id", eventId).single(),
@@ -45,13 +53,14 @@ export async function POST(request: NextRequest) {
   await supabase.from("event_publications").update({ status: "publishing", last_error: null }).eq("id", publication.id);
 
   try {
+    const memberUrn = await getMemberUrn(token);
     let imageUrn: string | null = null;
 
     if (event.cover_image_url) {
       const initializeResponse = await fetch("https://api.linkedin.com/rest/images?action=initializeUpload", {
         method: "POST",
         headers: linkedInHeaders(token, version),
-        body: JSON.stringify({ initializeUploadRequest: { owner: organizationUrn } }),
+        body: JSON.stringify({ initializeUploadRequest: { owner: memberUrn } }),
         cache: "no-store",
       });
       const initialized = await initializeResponse.json().catch(() => ({}));
@@ -77,7 +86,7 @@ export async function POST(request: NextRequest) {
 
     const commentary = combineCopy(event.linkedin_caption, event.hashtags) || event.title;
     const postBody: Record<string, unknown> = {
-      author: organizationUrn,
+      author: memberUrn,
       commentary,
       visibility: "PUBLIC",
       distribution: {
@@ -90,13 +99,7 @@ export async function POST(request: NextRequest) {
     };
 
     if (imageUrn) {
-      postBody.content = {
-        media: {
-          title: event.title,
-          altText: event.title,
-          id: imageUrn,
-        },
-      };
+      postBody.content = { media: { title: event.title, altText: event.title, id: imageUrn } };
     }
 
     const postResponse = await fetch("https://api.linkedin.com/rest/posts", {
@@ -114,14 +117,10 @@ export async function POST(request: NextRequest) {
     const postUrl = `https://www.linkedin.com/feed/update/${postId}/`;
     const publishedAt = new Date().toISOString();
     await supabase.from("event_publications").update({
-      status: "published",
-      external_id: postId,
-      external_url: postUrl,
-      published_at: publishedAt,
-      last_error: null,
+      status: "published", external_id: postId, external_url: postUrl, published_at: publishedAt, last_error: null,
     }).eq("id", publication.id);
 
-    return NextResponse.json({ published: true, id: postId, url: postUrl, publishedAt });
+    return NextResponse.json({ published: true, id: postId, url: postUrl, publishedAt, author: memberUrn });
   } catch (error) {
     const message = error instanceof Error ? error.message : "LinkedIn publish failed.";
     await supabase.from("event_publications").update({ status: "failed", last_error: message }).eq("id", publication.id);
