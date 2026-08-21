@@ -22,7 +22,7 @@ const channels = [
   { id: "eventbrite", label: "Eventbrite", publishable: false },
   { id: "humanitix", label: "Humanitix", publishable: false },
   { id: "wix", label: "Wix", publishable: false },
-];
+] as const;
 
 export default function PublishControls({ eventId, publications, selectedChannels }: Props) {
   const [rows, setRows] = useState(publications);
