@@ -14,6 +14,7 @@ export default function DashboardPage() {
         <div className="heroActions">
           <Link className="primaryButton inlineButton" href="/events/new">Create event</Link>
           <Link className="secondaryButton inlineButton" href="/events">Manage events</Link>
+          <Link className="secondaryButton inlineButton" href="/settings/connections">Connections</Link>
         </div>
       </section>
 
@@ -23,13 +24,13 @@ export default function DashboardPage() {
             <p className="eyebrow">Destinations</p>
             <h2>Publishing channels</h2>
           </div>
-          <small>Connections will be activated after the event workflow is validated.</small>
+          <small>Validate Instagram and LinkedIn in Connections before publishing is enabled.</small>
         </div>
         <div className="channelGrid">
           {channels.map((channel) => (
             <article className="channel" key={channel}>
               <strong>{channel}</strong>
-              <small>Not connected yet</small>
+              <small>Use Connections to validate</small>
             </article>
           ))}
         </div>
@@ -39,7 +40,10 @@ export default function DashboardPage() {
         <p className="eyebrow">Current workflow</p>
         <h2>Create → Save → Edit → Review</h2>
         <p>The master event workflow is available now. Publishing will be unlocked channel by channel after connection validation.</p>
-        <Link className="secondaryButton inlineButton" href="/events">Open Event Studio</Link>
+        <div className="cardActions">
+          <Link className="secondaryButton inlineButton" href="/events">Open Event Studio</Link>
+          <Link className="secondaryButton inlineButton" href="/settings/connections">Validate Connections</Link>
+        </div>
       </section>
     </main>
   );
