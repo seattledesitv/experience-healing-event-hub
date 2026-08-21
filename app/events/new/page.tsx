@@ -151,7 +151,7 @@ export default function NewEventPage() {
         .upsert(publicationRows, { onConflict: "event_id,channel" });
       if (publicationError) throw publicationError;
 
-      setMessage("Draft saved successfully.");
+      setMessage("Draft saved successfully. You can now review the event.");
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Unable to save draft");
     } finally {
@@ -228,7 +228,7 @@ export default function NewEventPage() {
 
         <div className="formActions">
           <button className="secondaryButton" type="submit" disabled={saving}>{saving ? "Saving..." : "Save draft"}</button>
-          <button className="primaryButton" type="button" disabled={!eventId}>Review event</button>
+          <button className="primaryButton" type="button" disabled={!eventId} onClick={() => eventId && (window.location.href = `/events/${eventId}?mode=review`)}>Review event</button>
         </div>
       </form>
     </main>
