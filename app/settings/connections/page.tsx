@@ -29,7 +29,7 @@ export default function ConnectionsPage() {
 
       const label = channel === "instagram"
         ? `Connected to @${payload.account?.username || payload.account?.id}`
-        : `Connected to ${payload.organization?.name || payload.organization?.urn}`;
+        : `Connected to ${payload.member?.name || payload.member?.email || payload.member?.urn || payload.member?.id || "LinkedIn member"}`;
 
       setter({ loading: false, ok: true, message: label });
     } catch (error) {
@@ -71,7 +71,7 @@ export default function ConnectionsPage() {
           <div>
             <p className="eyebrow">Social</p>
             <h2>LinkedIn</h2>
-            <p>Checks the configured LinkedIn organization page and access token.</p>
+            <p>Checks the authenticated LinkedIn member profile and access token.</p>
           </div>
           <div className={`connectionStatus ${linkedin.ok === true ? "isOk" : linkedin.ok === false ? "isError" : ""}`}>
             {linkedin.message}
