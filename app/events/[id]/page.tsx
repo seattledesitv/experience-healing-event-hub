@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import PublishControls from "./PublishControls";
 
 const channels = [
   { id: "instagram", label: "Instagram" },
@@ -69,11 +70,6 @@ export default function EventDetailPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-
-  const publicationMap = useMemo(
-    () => new Map(publications.map((publication) => [publication.channel, publication])),
-    [publications],
-  );
 
   useEffect(() => {
     async function loadEvent() {
@@ -227,30 +223,7 @@ export default function EventDetailPage() {
           </article>
 
           <aside className="panel reviewSidebar">
-            <p className="eyebrow">Publishing destinations</p>
-            <h2>Channel readiness</h2>
-            <div className="publishList">
-              {channels.map((channel) => {
-                const publication = publicationMap.get(channel.id);
-                const enabled = selectedChannels.includes(channel.id);
-                return (
-                  <div className="publishRow" key={channel.id}>
-                    <div>
-                      <strong>{channel.label}</strong>
-                      <small>{enabled ? "Selected" : "Not selected"}</small>
-                    </div>
-                    <span className={`statusPill ${enabled ? "status-pending" : "status-not_selected"}`}>
-                      {publication?.status || (enabled ? "pending" : "not selected")}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="publishNotice">
-              <strong>Publishing is intentionally locked.</strong>
-              <p>Next we will connect Instagram and LinkedIn, then enable the publish action only when their credentials validate successfully.</p>
-            </div>
-            <button className="primaryButton fullButton" type="button" disabled>Publish selected channels</button>
+            <PublishControls eventId={event.id} publications={publications} selectedChannels={selectedChannels} />
           </aside>
         </section>
       </main>
