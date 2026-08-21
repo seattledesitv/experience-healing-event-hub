@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
   if (eventError || !event) return NextResponse.json({ error: eventError?.message || "Event not found." }, { status: 404 });
   if (publicationError || !publication) return NextResponse.json({ error: publicationError?.message || "Instagram publication record not found." }, { status: 404 });
   if (!publication.enabled) return NextResponse.json({ error: "Instagram is not selected for this event." }, { status: 400 });
-  if (publication.status === "published") {
+  if (publication.status === "published" || publication.external_id) {
     return NextResponse.json({ published: true, alreadyPublished: true, id: publication.external_id, url: publication.external_url });
   }
   if (!event.cover_image_url) return NextResponse.json({ error: "Instagram publishing requires an event image." }, { status: 400 });
