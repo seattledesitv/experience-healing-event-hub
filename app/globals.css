@@ -174,12 +174,22 @@ input:focus, textarea:focus { outline: 2px solid #222; outline-offset: 1px; }
 .publishNotice p { margin: 8px 0 0; color: #666; line-height: 1.5; }
 .workflowPanel p { color: #666; line-height: 1.6; }
 
+.connectionList { display: grid; gap: 18px; }
+.connectionCard { border: 1px solid #ece6df; border-radius: 20px; padding: 24px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, .7fr) auto; gap: 24px; align-items: center; }
+.connectionCard h2 { margin-bottom: 8px; }
+.connectionCard p { margin: 0; color: #666; line-height: 1.55; }
+.connectionStatus { padding: 12px 14px; border-radius: 12px; background: #f3f1ee; font-weight: 700; line-height: 1.4; }
+.connectionStatus.isOk { background: #e9f6eb; border: 1px solid #c5e1ca; }
+.connectionStatus.isError { background: #fff0f0; border: 1px solid #efc6c6; }
+.mutedCard { background: #faf8f5; grid-template-columns: 1fr; }
+
 @media (max-width: 860px) {
   .compactHero { display: grid; align-items: start; }
   .reviewGrid { grid-template-columns: 1fr; }
   .reviewSidebar { position: static; }
   .eventCard { grid-template-columns: 1fr; }
   .eventCardImage { height: 240px; min-height: auto; }
+  .connectionCard { grid-template-columns: 1fr; align-items: start; }
 }
 
 @media (max-width: 720px) {
