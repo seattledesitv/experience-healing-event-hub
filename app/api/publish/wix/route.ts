@@ -116,7 +116,11 @@ export async function POST(request: NextRequest) {
         method: "POST",
         headers,
         cache: "no-store",
-        body: JSON.stringify({ event: wixEvent, draft: true }),
+        body: JSON.stringify({
+          event: wixEvent,
+          initialType: event.is_free === false ? "TICKETS" : "RSVP",
+          draft: true,
+        }),
       });
     }
 
