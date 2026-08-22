@@ -44,12 +44,43 @@ function wixStreetAddress(addressLine1: string | null) {
   if (!addressLine1?.trim()) return undefined;
   const value = addressLine1.trim();
   const match = value.match(/^([0-9A-Za-z-]+)\s+(.+)$/);
-  if (!match) return { name: value, formattedAddressLine: value };
+  if (!match) return { name: value };
   return {
     number: match[1],
     name: match[2],
-    formattedAddressLine: value,
   };
+}
+
+function buildEditableWixEvent(event: Record<string, any>) {
+  const wixEvent: Record<string, unknown> = {
+    title: event.title,
+    dateAndTimeSettings: {
+      startDate: new Date(event.start_at).toISOString(),
+      endDate: new Date(event.end_at).toISOString(),
+      timeZoneId: event.timezone || "America/Los_Angeles",
+    },
+  };
+
+  const description = richText(event.description || event.short_description);
+  if (description) wixEvent.description = description;
+
+  if (event.venue_name || event.address_line1 || event.city) {
+    wixEvent.location = {
+      type: "VENUE",
+      name: event.venue_name || event.address_line1 || event.city || "Event venue",
+      locationTbd: false,
+      address: {
+        country: event.country || "US",
+        city: event.city || undefined,
+        subdivision: event.state || undefined,
+        postalCode: event.postal_code || undefined,
+        streetAddress: wixStreetAddress(event.address_line1),
+        addressLine2: event.address_line2 || undefined,
+      },
+    };
+  }
+
+  return wixEvent;
 }
 
 export async function POST(request: NextRequest) {
@@ -89,63 +120,39 @@ export async function POST(request: NextRequest) {
 
     if (!event.start_at || !event.end_at) return NextResponse.json({ error: "Start and end date/time are required for Wix." }, { status: 400 });
 
-    const wixEvent: Record<string, unknown> = {
-      title: event.title,
-      shortDescription: event.short_description || undefined,
-      dateAndTimeSettings: {
-        startDate: new Date(event.start_at).toISOString(),
-        endDate: new Date(event.end_at).toISOString(),
-        timeZoneId: event.timezone || "America/Los_Angeles",
-      },
-      registration: {
-        initialType: event.is_free === false ? "TICKETING" : "RSVP",
-        ...(event.is_free === false
-          ? {
-              tickets: {
-                currency: event.currency || "USD",
-              },
-            }
-          : {
-              rsvp: {
-                responseType: "YES_ONLY",
-              },
-            }),
-      },
-    };
-
-    const description = richText(event.description || event.short_description);
-    if (description) wixEvent.description = description;
-    if (event.venue_name || event.address_line1 || event.city) {
-      wixEvent.location = {
-        type: "VENUE",
-        name: event.venue_name || event.address_line1 || event.city || "Event venue",
-        locationTbd: false,
-        address: {
-          country: event.country || "US",
-          city: event.city || undefined,
-          subdivision: event.state || undefined,
-          postalCode: event.postal_code || undefined,
-          streetAddress: wixStreetAddress(event.address_line1),
-          addressLine2: event.address_line2 || undefined,
-        },
-      };
-    }
+    const editableEvent = buildEditableWixEvent(event);
 
     let response: Response;
     if (action === "update" && publication.external_id) {
-      wixEvent.id = publication.external_id;
       response = await fetch(`https://www.wixapis.com/events/v3/events/${publication.external_id}`, {
         method: "PATCH",
         headers,
         cache: "no-store",
-        body: JSON.stringify({ event: wixEvent }),
+        body: JSON.stringify({
+          event: { id: publication.external_id, ...editableEvent },
+          fields: ["DETAILS", "TEXTS", "URLS"],
+        }),
       });
     } else {
+      const createEvent = {
+        ...editableEvent,
+        registration: {
+          initialType: event.is_free === false ? "TICKETING" : "RSVP",
+          ...(event.is_free === false
+            ? { tickets: { currency: event.currency || "USD" } }
+            : { rsvp: { responseType: "YES_ONLY" } }),
+        },
+      };
+
       response = await fetch("https://www.wixapis.com/events/v3/events", {
         method: "POST",
         headers,
         cache: "no-store",
-        body: JSON.stringify({ event: wixEvent, draft: true }),
+        body: JSON.stringify({
+          event: createEvent,
+          draft: true,
+          fields: ["DETAILS", "TEXTS", "REGISTRATION", "URLS"],
+        }),
       });
     }
 
