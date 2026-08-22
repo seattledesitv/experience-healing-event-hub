@@ -87,6 +87,11 @@ export default function NewEventPage() {
 
   async function saveDraft(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    // React's synthetic event is reused across awaits. Capture the actual form
+    // element before any async work so FormData always receives an HTMLFormElement.
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+
     setSaving(true);
     setError("");
     setMessage("");
@@ -99,7 +104,6 @@ export default function NewEventPage() {
         return;
       }
 
-      const form = new FormData(event.currentTarget);
       const title = value(form, "title");
       if (!title) throw new Error("Event title is required.");
 
