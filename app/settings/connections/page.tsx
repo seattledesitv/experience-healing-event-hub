@@ -16,15 +16,18 @@ export default function ConnectionsPage() {
   const [linkedin, setLinkedin] = useState<CheckState>(initial);
   const [wix, setWix] = useState<CheckState>(initial);
   const [eventbrite, setEventbrite] = useState<CheckState>(initial);
+  const [humanitix, setHumanitix] = useState<CheckState>(initial);
 
-  async function validate(channel: "instagram" | "linkedin" | "wix" | "eventbrite") {
+  async function validate(channel: "instagram" | "linkedin" | "wix" | "eventbrite" | "humanitix") {
     const setter = channel === "instagram"
       ? setInstagram
       : channel === "linkedin"
         ? setLinkedin
         : channel === "wix"
           ? setWix
-          : setEventbrite;
+          : channel === "eventbrite"
+            ? setEventbrite
+            : setHumanitix;
 
     setter({ loading: true, ok: null, message: "Checking connection..." });
 
@@ -43,13 +46,17 @@ export default function ConnectionsPage() {
         label = `Connected to ${payload.member?.name || payload.member?.email || payload.member?.urn || payload.member?.id || "LinkedIn member"}`;
       } else if (channel === "wix") {
         label = `Connected to Wix site ${payload.site?.id || "configured site"}`;
-      } else if (payload.organization) {
-        label = `Connected to ${payload.organization.name || "Eventbrite organization"} (${payload.organization.id})`;
-      } else if (payload.needsOrganizationSelection) {
-        const summary = (payload.organizations || []).map((item: { name?: string; id?: string }) => `${item.name || "Organization"} (${item.id || "no id"})`).join(", ");
-        label = `Connected. Choose Eventbrite organization: ${summary}`;
+      } else if (channel === "eventbrite") {
+        if (payload.organization) {
+          label = `Connected to ${payload.organization.name || "Eventbrite organization"} (${payload.organization.id})`;
+        } else if (payload.needsOrganizationSelection) {
+          const summary = (payload.organizations || []).map((item: { name?: string; id?: string }) => `${item.name || "Organization"} (${item.id || "no id"})`).join(", ");
+          label = `Connected. Choose Eventbrite organization: ${summary}`;
+        } else {
+          label = `Connected to Eventbrite ${payload.user?.name || "account"}`;
+        }
       } else {
-        label = `Connected to Eventbrite ${payload.user?.name || "account"}`;
+        label = `Connected to Humanitix${typeof payload.eventCount === "number" ? ` — ${payload.eventCount} event${payload.eventCount === 1 ? "" : "s"} visible` : ""}`;
       }
 
       setter({ loading: false, ok: true, message: label });
@@ -122,12 +129,16 @@ export default function ConnectionsPage() {
           </button>
         </article>
 
-        <article className="connectionCard mutedCard">
+        <article className="connectionCard">
           <div>
-            <p className="eyebrow">Next</p>
+            <p className="eyebrow">Events</p>
             <h2>Humanitix</h2>
-            <p>Humanitix will remain a manual/sync connector unless write API access becomes available.</p>
+            <p>Checks the configured Humanitix public API key and confirms read-only event access.</p>
           </div>
+          <div className={`connectionStatus ${humanitix.ok === true ? "isOk" : humanitix.ok === false ? "isError" : ""}`}>{humanitix.message}</div>
+          <button className="primaryButton" type="button" onClick={() => validate("humanitix")} disabled={humanitix.loading}>
+            {humanitix.loading ? "Checking..." : "Validate Humanitix"}
+          </button>
         </article>
       </section>
     </main>
