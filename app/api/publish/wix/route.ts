@@ -11,8 +11,30 @@ function wixHeaders(apiKey: string, siteId: string) {
 
 function richText(text: string | null) {
   if (!text?.trim()) return undefined;
+
   return {
-    nodes: [{ type: "PARAGRAPH", id: crypto.randomUUID().slice(0, 8), nodes: [{ type: "TEXT", id: crypto.randomUUID().slice(0, 8), textData: { text: text.trim(), decorations: [] }], paragraphData: { textStyle: { textAlignment: "AUTO" }, indentation: 0 } }],
+    nodes: [
+      {
+        type: "PARAGRAPH",
+        id: crypto.randomUUID().slice(0, 8),
+        nodes: [
+          {
+            type: "TEXT",
+            id: crypto.randomUUID().slice(0, 8),
+            textData: {
+              text: text.trim(),
+              decorations: [],
+            },
+          },
+        ],
+        paragraphData: {
+          textStyle: {
+            textAlignment: "AUTO",
+          },
+          indentation: 0,
+        },
+      },
+    ],
     metadata: { version: 1 },
     documentStyle: {},
   };
@@ -84,11 +106,17 @@ export async function POST(request: NextRequest) {
     if (action === "update" && publication.external_id) {
       wixEvent.id = publication.external_id;
       response = await fetch(`https://www.wixapis.com/events/v3/events/${publication.external_id}`, {
-        method: "PATCH", headers, cache: "no-store", body: JSON.stringify({ event: wixEvent }),
+        method: "PATCH",
+        headers,
+        cache: "no-store",
+        body: JSON.stringify({ event: wixEvent }),
       });
     } else {
       response = await fetch("https://www.wixapis.com/events/v3/events", {
-        method: "POST", headers, cache: "no-store", body: JSON.stringify({ event: wixEvent, draft: true }),
+        method: "POST",
+        headers,
+        cache: "no-store",
+        body: JSON.stringify({ event: wixEvent, draft: true }),
       });
     }
 
@@ -100,7 +128,11 @@ export async function POST(request: NextRequest) {
     if (!externalId) throw new Error("Wix did not return an event ID.");
     const externalUrl = created.eventPageUrl || created.url || publication.external_url || null;
     await supabase.from("event_publications").update({
-      status: "published", external_id: externalId, external_url: externalUrl, published_at: new Date().toISOString(), last_error: null,
+      status: "published",
+      external_id: externalId,
+      external_url: externalUrl,
+      published_at: new Date().toISOString(),
+      last_error: null,
     }).eq("id", publication.id);
 
     return NextResponse.json({ published: true, draft: true, id: externalId, url: externalUrl, action: publication.external_id ? "updated" : "created" });
