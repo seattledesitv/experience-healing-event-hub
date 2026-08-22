@@ -40,6 +40,18 @@ function richText(text: string | null) {
   };
 }
 
+function wixStreetAddress(addressLine1: string | null) {
+  if (!addressLine1?.trim()) return undefined;
+  const value = addressLine1.trim();
+  const match = value.match(/^([0-9A-Za-z-]+)\s+(.+)$/);
+  if (!match) return { name: value, formattedAddressLine: value };
+  return {
+    number: match[1],
+    name: match[2],
+    formattedAddressLine: value,
+  };
+}
+
 export async function POST(request: NextRequest) {
   const supabase = await createSupabaseServerClient();
   const { data: userData } = await supabase.auth.getUser();
@@ -79,6 +91,7 @@ export async function POST(request: NextRequest) {
 
     const wixEvent: Record<string, unknown> = {
       title: event.title,
+      shortDescription: event.short_description || undefined,
       dateAndTimeSettings: {
         startDate: new Date(event.start_at).toISOString(),
         endDate: new Date(event.end_at).toISOString(),
@@ -106,12 +119,14 @@ export async function POST(request: NextRequest) {
       wixEvent.location = {
         type: "VENUE",
         name: event.venue_name || event.address_line1 || event.city || "Event venue",
+        locationTbd: false,
         address: {
           country: event.country || "US",
           city: event.city || undefined,
           subdivision: event.state || undefined,
           postalCode: event.postal_code || undefined,
-          streetAddress: event.address_line1 ? { name: event.address_line1 } : undefined,
+          streetAddress: wixStreetAddress(event.address_line1),
+          addressLine2: event.address_line2 || undefined,
         },
       };
     }
@@ -130,10 +145,7 @@ export async function POST(request: NextRequest) {
         method: "POST",
         headers,
         cache: "no-store",
-        body: JSON.stringify({
-          event: wixEvent,
-          draft: true,
-        }),
+        body: JSON.stringify({ event: wixEvent, draft: true }),
       });
     }
 
@@ -152,7 +164,14 @@ export async function POST(request: NextRequest) {
       last_error: null,
     }).eq("id", publication.id);
 
-    return NextResponse.json({ published: true, draft: true, id: externalId, url: externalUrl, action: publication.external_id ? "updated" : "created" });
+    return NextResponse.json({
+      published: true,
+      draft: true,
+      id: externalId,
+      url: externalUrl,
+      action: publication.external_id ? "updated" : "created",
+      imagePending: Boolean(event.cover_image_url),
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Wix operation failed.";
     await supabase.from("event_publications").update({ status: "failed", last_error: message }).eq("id", publication.id);
