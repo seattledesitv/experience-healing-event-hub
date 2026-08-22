@@ -84,6 +84,20 @@ export async function POST(request: NextRequest) {
         endDate: new Date(event.end_at).toISOString(),
         timeZoneId: event.timezone || "America/Los_Angeles",
       },
+      registration: {
+        initialType: event.is_free === false ? "TICKETING" : "RSVP",
+        ...(event.is_free === false
+          ? {
+              tickets: {
+                currency: event.currency || "USD",
+              },
+            }
+          : {
+              rsvp: {
+                responseType: "YES_ONLY",
+              },
+            }),
+      },
     };
 
     const description = richText(event.description || event.short_description);
@@ -118,7 +132,6 @@ export async function POST(request: NextRequest) {
         cache: "no-store",
         body: JSON.stringify({
           event: wixEvent,
-          initialType: event.is_free === false ? "TICKETS" : "RSVP",
           draft: true,
         }),
       });
