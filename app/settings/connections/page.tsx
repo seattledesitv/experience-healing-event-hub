@@ -14,9 +14,10 @@ const initial: CheckState = { loading: false, ok: null, message: "Not checked ye
 export default function ConnectionsPage() {
   const [instagram, setInstagram] = useState<CheckState>(initial);
   const [linkedin, setLinkedin] = useState<CheckState>(initial);
+  const [wix, setWix] = useState<CheckState>(initial);
 
-  async function validate(channel: "instagram" | "linkedin") {
-    const setter = channel === "instagram" ? setInstagram : setLinkedin;
+  async function validate(channel: "instagram" | "linkedin" | "wix") {
+    const setter = channel === "instagram" ? setInstagram : channel === "linkedin" ? setLinkedin : setWix;
     setter({ loading: true, ok: null, message: "Checking connection..." });
 
     try {
@@ -29,7 +30,9 @@ export default function ConnectionsPage() {
 
       const label = channel === "instagram"
         ? `Connected to @${payload.account?.username || payload.account?.id}`
-        : `Connected to ${payload.member?.name || payload.member?.email || payload.member?.urn || payload.member?.id || "LinkedIn member"}`;
+        : channel === "linkedin"
+          ? `Connected to ${payload.member?.name || payload.member?.email || payload.member?.urn || payload.member?.id || "LinkedIn member"}`
+          : `Connected to Wix site ${payload.site?.id || "configured site"}`;
 
       setter({ loading: false, ok: true, message: label });
     } catch (error) {
@@ -81,11 +84,25 @@ export default function ConnectionsPage() {
           </button>
         </article>
 
+        <article className="connectionCard">
+          <div>
+            <p className="eyebrow">Events</p>
+            <h2>Wix</h2>
+            <p>Checks the configured Experience Healing Wix site and Wix Events API access.</p>
+          </div>
+          <div className={`connectionStatus ${wix.ok === true ? "isOk" : wix.ok === false ? "isError" : ""}`}>
+            {wix.message}
+          </div>
+          <button className="primaryButton" type="button" onClick={() => validate("wix")} disabled={wix.loading}>
+            {wix.loading ? "Checking..." : "Validate Wix"}
+          </button>
+        </article>
+
         <article className="connectionCard mutedCard">
           <div>
             <p className="eyebrow">Next</p>
-            <h2>Eventbrite, Wix & Humanitix</h2>
-            <p>These connectors will be added after Instagram and LinkedIn validation succeeds.</p>
+            <h2>Eventbrite & Humanitix</h2>
+            <p>These connectors will be added after Wix validation succeeds.</p>
           </div>
         </article>
       </section>
