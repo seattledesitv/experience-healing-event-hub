@@ -11,7 +11,9 @@ export async function GET() {
     return NextResponse.json({ connected: false, error: "Humanitix API key is not configured." }, { status: 400 });
   }
 
-  const response = await fetch("https://api.humanitix.com/v1/events", {
+  // Humanitix requires an explicit page query parameter for the events endpoint.
+  // Keep the validation read-only and request only the first page.
+  const response = await fetch("https://api.humanitix.com/v1/events?page=1", {
     cache: "no-store",
     headers: {
       "x-api-key": apiKey,
@@ -28,7 +30,13 @@ export async function GET() {
     }, { status: response.status });
   }
 
-  const events = Array.isArray(payload) ? payload : Array.isArray(payload?.events) ? payload.events : [];
+  const events = Array.isArray(payload)
+    ? payload
+    : Array.isArray(payload?.events)
+      ? payload.events
+      : Array.isArray(payload?.data)
+        ? payload.data
+        : [];
 
   return NextResponse.json({
     connected: true,
