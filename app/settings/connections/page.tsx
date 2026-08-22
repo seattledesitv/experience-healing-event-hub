@@ -15,9 +15,17 @@ export default function ConnectionsPage() {
   const [instagram, setInstagram] = useState<CheckState>(initial);
   const [linkedin, setLinkedin] = useState<CheckState>(initial);
   const [wix, setWix] = useState<CheckState>(initial);
+  const [eventbrite, setEventbrite] = useState<CheckState>(initial);
 
-  async function validate(channel: "instagram" | "linkedin" | "wix") {
-    const setter = channel === "instagram" ? setInstagram : channel === "linkedin" ? setLinkedin : setWix;
+  async function validate(channel: "instagram" | "linkedin" | "wix" | "eventbrite") {
+    const setter = channel === "instagram"
+      ? setInstagram
+      : channel === "linkedin"
+        ? setLinkedin
+        : channel === "wix"
+          ? setWix
+          : setEventbrite;
+
     setter({ loading: true, ok: null, message: "Checking connection..." });
 
     try {
@@ -28,11 +36,21 @@ export default function ConnectionsPage() {
         throw new Error(payload.error || "Connection validation failed.");
       }
 
-      const label = channel === "instagram"
-        ? `Connected to @${payload.account?.username || payload.account?.id}`
-        : channel === "linkedin"
-          ? `Connected to ${payload.member?.name || payload.member?.email || payload.member?.urn || payload.member?.id || "LinkedIn member"}`
-          : `Connected to Wix site ${payload.site?.id || "configured site"}`;
+      let label = "Connected";
+      if (channel === "instagram") {
+        label = `Connected to @${payload.account?.username || payload.account?.id}`;
+      } else if (channel === "linkedin") {
+        label = `Connected to ${payload.member?.name || payload.member?.email || payload.member?.urn || payload.member?.id || "LinkedIn member"}`;
+      } else if (channel === "wix") {
+        label = `Connected to Wix site ${payload.site?.id || "configured site"}`;
+      } else if (payload.organization) {
+        label = `Connected to ${payload.organization.name || "Eventbrite organization"} (${payload.organization.id})`;
+      } else if (payload.needsOrganizationSelection) {
+        const summary = (payload.organizations || []).map((item: { name?: string; id?: string }) => `${item.name || "Organization"} (${item.id || "no id"})`).join(", ");
+        label = `Connected. Choose Eventbrite organization: ${summary}`;
+      } else {
+        label = `Connected to Eventbrite ${payload.user?.name || "account"}`;
+      }
 
       setter({ loading: false, ok: true, message: label });
     } catch (error) {
@@ -62,9 +80,7 @@ export default function ConnectionsPage() {
             <h2>Instagram</h2>
             <p>Checks the configured Instagram professional account and Meta access token.</p>
           </div>
-          <div className={`connectionStatus ${instagram.ok === true ? "isOk" : instagram.ok === false ? "isError" : ""}`}>
-            {instagram.message}
-          </div>
+          <div className={`connectionStatus ${instagram.ok === true ? "isOk" : instagram.ok === false ? "isError" : ""}`}>{instagram.message}</div>
           <button className="primaryButton" type="button" onClick={() => validate("instagram")} disabled={instagram.loading}>
             {instagram.loading ? "Checking..." : "Validate Instagram"}
           </button>
@@ -76,9 +92,7 @@ export default function ConnectionsPage() {
             <h2>LinkedIn</h2>
             <p>Checks the authenticated LinkedIn member profile and access token.</p>
           </div>
-          <div className={`connectionStatus ${linkedin.ok === true ? "isOk" : linkedin.ok === false ? "isError" : ""}`}>
-            {linkedin.message}
-          </div>
+          <div className={`connectionStatus ${linkedin.ok === true ? "isOk" : linkedin.ok === false ? "isError" : ""}`}>{linkedin.message}</div>
           <button className="primaryButton" type="button" onClick={() => validate("linkedin")} disabled={linkedin.loading}>
             {linkedin.loading ? "Checking..." : "Validate LinkedIn"}
           </button>
@@ -90,19 +104,29 @@ export default function ConnectionsPage() {
             <h2>Wix</h2>
             <p>Checks the configured Experience Healing Wix site and Wix Events API access.</p>
           </div>
-          <div className={`connectionStatus ${wix.ok === true ? "isOk" : wix.ok === false ? "isError" : ""}`}>
-            {wix.message}
-          </div>
+          <div className={`connectionStatus ${wix.ok === true ? "isOk" : wix.ok === false ? "isError" : ""}`}>{wix.message}</div>
           <button className="primaryButton" type="button" onClick={() => validate("wix")} disabled={wix.loading}>
             {wix.loading ? "Checking..." : "Validate Wix"}
+          </button>
+        </article>
+
+        <article className="connectionCard">
+          <div>
+            <p className="eyebrow">Events</p>
+            <h2>Eventbrite</h2>
+            <p>Checks the configured Eventbrite private token and discovers the organizations available to the account.</p>
+          </div>
+          <div className={`connectionStatus ${eventbrite.ok === true ? "isOk" : eventbrite.ok === false ? "isError" : ""}`}>{eventbrite.message}</div>
+          <button className="primaryButton" type="button" onClick={() => validate("eventbrite")} disabled={eventbrite.loading}>
+            {eventbrite.loading ? "Checking..." : "Validate Eventbrite"}
           </button>
         </article>
 
         <article className="connectionCard mutedCard">
           <div>
             <p className="eyebrow">Next</p>
-            <h2>Eventbrite & Humanitix</h2>
-            <p>These connectors will be added after Wix validation succeeds.</p>
+            <h2>Humanitix</h2>
+            <p>Humanitix will remain a manual/sync connector unless write API access becomes available.</p>
           </div>
         </article>
       </section>
