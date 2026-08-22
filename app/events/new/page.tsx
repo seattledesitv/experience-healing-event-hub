@@ -87,10 +87,7 @@ export default function NewEventPage() {
 
   async function saveDraft(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    // React's synthetic event is reused across awaits. Capture the actual form
-    // element before any async work so FormData always receives an HTMLFormElement.
-    const formElement = event.currentTarget;
-    const form = new FormData(formElement);
+    const form = new FormData(event.currentTarget);
 
     setSaving(true);
     setError("");
@@ -107,6 +104,12 @@ export default function NewEventPage() {
       const title = value(form, "title");
       if (!title) throw new Error("Event title is required.");
 
+      const pricingType = value(form, "pricing_type") || "free";
+      const price = Number(value(form, "price"));
+      if (pricingType === "paid" && (!Number.isFinite(price) || price <= 0)) {
+        throw new Error("Enter a ticket price greater than 0 for a paid event.");
+      }
+
       const payload = {
         title,
         short_description: value(form, "short_description") || null,
@@ -115,10 +118,16 @@ export default function NewEventPage() {
         end_at: toIso(value(form, "end_at")),
         venue_name: value(form, "venue_name") || null,
         address_line1: value(form, "address_line1") || null,
+        address_line2: value(form, "address_line2") || null,
         city: value(form, "city") || null,
         state: value(form, "state") || null,
         postal_code: value(form, "postal_code") || null,
+        country: value(form, "country") || "US",
         registration_url: value(form, "registration_url") || null,
+        is_free: pricingType !== "paid",
+        price_cents: pricingType === "paid" ? Math.round(price * 100) : null,
+        currency: value(form, "currency") || "USD",
+        capacity: value(form, "capacity") ? Number(value(form, "capacity")) : null,
         cover_image_url: coverImageUrl || null,
         cover_image_public_id: coverImagePublicId || null,
         instagram_caption: value(form, "instagram_caption") || null,
@@ -133,11 +142,7 @@ export default function NewEventPage() {
         const { error: updateError } = await supabase.from("events").update(payload).eq("id", savedId);
         if (updateError) throw updateError;
       } else {
-        const { data: inserted, error: insertError } = await supabase
-          .from("events")
-          .insert(payload)
-          .select("id")
-          .single();
+        const { data: inserted, error: insertError } = await supabase.from("events").insert(payload).select("id").single();
         if (insertError) throw insertError;
         savedId = inserted.id;
         setEventId(inserted.id);
@@ -150,9 +155,7 @@ export default function NewEventPage() {
         status: selectedChannels.includes(channel.id) ? "pending" : "not_selected",
       }));
 
-      const { error: publicationError } = await supabase
-        .from("event_publications")
-        .upsert(publicationRows, { onConflict: "event_id,channel" });
+      const { error: publicationError } = await supabase.from("event_publications").upsert(publicationRows, { onConflict: "event_id,channel" });
       if (publicationError) throw publicationError;
 
       setMessage("Draft saved successfully. You can now review the event.");
@@ -186,17 +189,32 @@ export default function NewEventPage() {
         <div className="formSection">
           <div><p className="eyebrow">2. Location & registration</p><h2>Where people join</h2></div>
           <label>Venue name<input name="venue_name" placeholder="Experience Healing Studio" /></label>
-          <label>Address<input name="address_line1" placeholder="Street address" /></label>
+          <label>Address line 1<input name="address_line1" placeholder="123 Main Street" /></label>
+          <label>Address line 2<input name="address_line2" placeholder="Suite / Unit (optional)" /></label>
           <div className="threeCol">
             <label>City<input name="city" /></label>
             <label>State<input name="state" defaultValue="WA" /></label>
             <label>ZIP<input name="postal_code" /></label>
           </div>
+          <div className="twoCol">
+            <label>Country<input name="country" defaultValue="US" /></label>
+            <label>Capacity<input name="capacity" type="number" min="1" placeholder="Optional" /></label>
+          </div>
           <label>Registration URL<input name="registration_url" type="url" placeholder="https://..." /></label>
         </div>
 
         <div className="formSection">
-          <div><p className="eyebrow">3. Media</p><h2>Event image</h2></div>
+          <div><p className="eyebrow">3. Pricing</p><h2>Free or paid event</h2></div>
+          <div className="threeCol">
+            <label>Pricing type<select name="pricing_type" defaultValue="free"><option value="free">Free / RSVP</option><option value="paid">Paid / Ticketed</option></select></label>
+            <label>Ticket price<input name="price" type="number" min="0" step="0.01" placeholder="25.00" /></label>
+            <label>Currency<select name="currency" defaultValue="USD"><option value="USD">USD</option><option value="CAD">CAD</option><option value="EUR">EUR</option><option value="GBP">GBP</option><option value="INR">INR</option></select></label>
+          </div>
+          <p className="mutedText">For paid events, enter the standard/general-admission ticket price. Wix and Eventbrite will use this when their ticket definitions are created.</p>
+        </div>
+
+        <div className="formSection">
+          <div><p className="eyebrow">4. Media</p><h2>Event image</h2></div>
           <div className="uploadBox">
             <strong>Upload event flyer or photo</strong>
             <span>Stored in Cloudinary and reused for each publishing destination.</span>
@@ -207,14 +225,14 @@ export default function NewEventPage() {
         </div>
 
         <div className="formSection">
-          <div><p className="eyebrow">4. Social copy</p><h2>Customize by channel</h2></div>
+          <div><p className="eyebrow">5. Social copy</p><h2>Customize by channel</h2></div>
           <label>Instagram caption<textarea name="instagram_caption" rows={5} placeholder="Instagram-ready caption..." /></label>
           <label>LinkedIn caption<textarea name="linkedin_caption" rows={5} placeholder="LinkedIn-ready copy..." /></label>
           <label>Hashtags<input name="hashtags" placeholder="#ExperienceHealing #Wellness #Seattle" /></label>
         </div>
 
         <div className="formSection">
-          <div><p className="eyebrow">5. Destinations</p><h2>Select where to publish</h2></div>
+          <div><p className="eyebrow">6. Destinations</p><h2>Select where to publish</h2></div>
           <div className="channelGrid">
             {channels.map((channel) => {
               const selected = selectedChannels.includes(channel.id);
