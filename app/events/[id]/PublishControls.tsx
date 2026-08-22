@@ -16,12 +16,15 @@ type Props = {
   selectedChannels: string[];
 };
 
+type WritableChannel = "instagram" | "linkedin" | "eventbrite" | "wix";
+type LifecycleChannel = "eventbrite" | "wix";
+
 const channels = [
-  { id: "instagram", label: "Instagram", publishable: true },
-  { id: "linkedin", label: "LinkedIn", publishable: true },
-  { id: "eventbrite", label: "Eventbrite", publishable: false },
-  { id: "humanitix", label: "Humanitix", publishable: false },
-  { id: "wix", label: "Wix", publishable: false },
+  { id: "instagram", label: "Instagram", publishable: true, lifecycle: false },
+  { id: "linkedin", label: "LinkedIn", publishable: true, lifecycle: false },
+  { id: "eventbrite", label: "Eventbrite", publishable: true, lifecycle: true },
+  { id: "humanitix", label: "Humanitix", publishable: false, lifecycle: false },
+  { id: "wix", label: "Wix", publishable: true, lifecycle: true },
 ] as const;
 
 export default function PublishControls({ eventId, publications, selectedChannels }: Props) {
@@ -40,49 +43,87 @@ export default function PublishControls({ eventId, publications, selectedChannel
     });
   }
 
-  async function publish(channel: "instagram" | "linkedin") {
-    const label = channel === "instagram" ? "Instagram" : "LinkedIn";
-    if (!window.confirm(`Publish this event to ${label} now? This will create a real public post.`)) return;
+  async function runChannel(channel: WritableChannel, action: "create" | "update" | "delete" = "create", ask = true) {
+    const label = channels.find((item) => item.id === channel)?.label || channel;
+    const external = publicationMap.get(channel);
+    const actualAction = action === "create" && external?.external_url ? "update" : action;
 
-    setPublishing(channel);
+    if (ask) {
+      const warning = channel === "instagram" || channel === "linkedin"
+        ? `Publish this event to ${label} now? This creates a real public post.`
+        : actualAction === "delete"
+          ? `Delete this event from ${label}? This removes the external event but keeps the master event in this Hub.`
+          : `${actualAction === "update" ? "Update" : "Create"} the ${label} event now? Wix/Eventbrite are created as drafts for review.`;
+      if (!window.confirm(warning)) return false;
+    }
+
+    setPublishing(`${channel}:${actualAction}`);
     setMessage("");
     setError("");
-    updateChannel(channel, { status: "publishing", last_error: null });
+    if (actualAction !== "delete") updateChannel(channel, { status: "publishing", last_error: null });
 
     try {
       const response = await fetch(`/api/publish/${channel}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ eventId }),
+        body: JSON.stringify({ eventId, action: actualAction }),
       });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || `${label} publishing failed.`);
+      if (!response.ok) throw new Error(payload.error || `${label} operation failed.`);
 
-      updateChannel(channel, {
-        status: "published",
-        external_url: payload.url || null,
-        last_error: null,
-      });
-      setMessage(payload.alreadyPublished ? `${label} was already published.` : `${label} published successfully.`);
+      if (actualAction === "delete") {
+        updateChannel(channel, { status: "pending", external_url: null, last_error: null });
+        setMessage(`${label} event deleted. The master Hub event was kept.`);
+      } else {
+        updateChannel(channel, { status: "published", external_url: payload.url || external?.external_url || null, last_error: null });
+        const suffix = channel === "eventbrite" || channel === "wix" ? " draft" : " post";
+        setMessage(`${label}${suffix} ${payload.action === "updated" ? "updated" : "created"} successfully.`);
+      }
+      return true;
     } catch (publishError) {
-      const text = publishError instanceof Error ? publishError.message : `${label} publishing failed.`;
+      const text = publishError instanceof Error ? publishError.message : `${label} operation failed.`;
       updateChannel(channel, { status: "failed", last_error: text });
       setError(text);
+      return false;
     } finally {
       setPublishing(null);
     }
+  }
+
+  async function publishSelected() {
+    const selected = channels.filter((item) => selectedChannels.includes(item.id) && item.publishable).map((item) => item.id as WritableChannel);
+    if (!selected.length) return;
+    if (!window.confirm("Run all selected writable destinations? LinkedIn/Instagram create real public posts; Wix/Eventbrite create drafts for review.")) return;
+
+    const results: string[] = [];
+    for (const channel of selected) {
+      const row = publicationMap.get(channel);
+      if ((channel === "instagram" || channel === "linkedin") && (row?.status === "published" || row?.external_url)) {
+        continue;
+      }
+      const ok = await runChannel(channel, "create", false);
+      results.push(`${channel}: ${ok ? "ok" : "failed"}`);
+    }
+    setMessage(`Selected destinations finished — ${results.join(", ")}.`);
   }
 
   return (
     <>
       <p className="eyebrow">Publishing destinations</p>
       <h2>Channel readiness</h2>
+
+      <button className="primaryButton" type="button" disabled={publishing !== null} onClick={publishSelected}>
+        {publishing ? "Working..." : "Publish / Create Selected"}
+      </button>
+      <p className="mutedText">Social channels publish publicly. Wix and Eventbrite are created as drafts. Humanitix is read-only/manual.</p>
+
       <div className="publishList">
         {channels.map((channel) => {
           const publication = publicationMap.get(channel.id);
           const enabled = selectedChannels.includes(channel.id);
           const status = publication?.status || (enabled ? "pending" : "not_selected");
-          const canPublish = enabled && channel.publishable && status !== "published";
+          const hasExternal = Boolean(publication?.external_url) || status === "published";
+          const writable = channel.publishable && enabled;
 
           return (
             <div className="publishChannel" key={channel.id}>
@@ -95,20 +136,30 @@ export default function PublishControls({ eventId, publications, selectedChannel
               </div>
 
               {publication?.last_error ? <p className="channelError">{publication.last_error}</p> : null}
-              {publication?.external_url && status === "published" ? (
-                <a className="secondaryButton inlineButton smallButton" href={publication.external_url} target="_blank" rel="noreferrer">View post</a>
+              {publication?.external_url ? (
+                <a className="secondaryButton inlineButton smallButton" href={publication.external_url} target="_blank" rel="noreferrer">View external</a>
               ) : null}
-              {canPublish && (channel.id === "instagram" || channel.id === "linkedin") ? (
-                <button
-                  className="primaryButton smallButton"
-                  type="button"
-                  disabled={publishing !== null}
-                  onClick={() => publish(channel.id)}
-                >
-                  {publishing === channel.id ? "Publishing..." : `Publish to ${channel.label}`}
+
+              {writable && (channel.id === "instagram" || channel.id === "linkedin") && status !== "published" ? (
+                <button className="primaryButton smallButton" type="button" disabled={publishing !== null} onClick={() => runChannel(channel.id)}>
+                  {publishing?.startsWith(channel.id) ? "Working..." : `Publish to ${channel.label}`}
                 </button>
               ) : null}
-              {enabled && !channel.publishable ? <small className="mutedText">Connector coming next.</small> : null}
+
+              {writable && channel.lifecycle ? (
+                <div className="heroActions">
+                  <button className="primaryButton smallButton" type="button" disabled={publishing !== null} onClick={() => runChannel(channel.id as LifecycleChannel, hasExternal ? "update" : "create")}>
+                    {publishing?.startsWith(channel.id) ? "Working..." : hasExternal ? `Update ${channel.label}` : `Create ${channel.label} draft`}
+                  </button>
+                  {hasExternal ? (
+                    <button className="secondaryButton smallButton" type="button" disabled={publishing !== null} onClick={() => runChannel(channel.id as LifecycleChannel, "delete")}>
+                      Delete from {channel.label}
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {enabled && channel.id === "humanitix" ? <small className="mutedText">Connected read-only. Create/delete manually in Humanitix.</small> : null}
             </div>
           );
         })}
@@ -118,8 +169,8 @@ export default function PublishControls({ eventId, publications, selectedChannel
       {message ? <p className="formSuccess publishFeedback">{message}</p> : null}
 
       <div className="publishNotice">
-        <strong>Publishing is live for Instagram and LinkedIn.</strong>
-        <p>Each destination is published independently. Eventbrite, Wix, and Humanitix remain locked until their connectors are completed.</p>
+        <strong>Lifecycle controls are enabled for Wix and Eventbrite.</strong>
+        <p>External deletion never deletes the master event from this Hub. Humanitix remains sync/manual because its public API is read-only.</p>
       </div>
     </>
   );
