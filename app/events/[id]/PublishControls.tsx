@@ -90,6 +90,39 @@ export default function PublishControls({ eventId, publications, selectedChannel
     }
   }
 
+  async function checkHumanitix() {
+    if (!selectedChannels.includes("humanitix")) return;
+    setPublishing("humanitix:check");
+    setMessage("");
+    setError("");
+    updateChannel("humanitix", { status: "publishing", last_error: null });
+
+    try {
+      const response = await fetch("/api/publish/humanitix", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ eventId }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "Humanitix check failed.");
+
+      if (payload.matched) {
+        updateChannel("humanitix", { status: "published", external_url: payload.url || null, last_error: null });
+        setMessage(`Humanitix match found${payload.name ? `: ${payload.name}` : ""}.`);
+      } else {
+        const text = payload.message || "No matching Humanitix event was found.";
+        updateChannel("humanitix", { status: "manual_action_required", external_url: null, last_error: text });
+        setMessage(`${text} Create it manually in Humanitix, then check again.`);
+      }
+    } catch (checkError) {
+      const text = checkError instanceof Error ? checkError.message : "Humanitix check failed.";
+      updateChannel("humanitix", { status: "failed", last_error: text });
+      setError(text);
+    } finally {
+      setPublishing(null);
+    }
+  }
+
   async function publishSelected() {
     const selected = channels.filter((item) => selectedChannels.includes(item.id) && item.publishable).map((item) => item.id as WritableChannel);
     if (!selected.length) return;
@@ -98,9 +131,7 @@ export default function PublishControls({ eventId, publications, selectedChannel
     const results: string[] = [];
     for (const channel of selected) {
       const row = publicationMap.get(channel);
-      if ((channel === "instagram" || channel === "linkedin") && (row?.status === "published" || row?.external_url)) {
-        continue;
-      }
+      if ((channel === "instagram" || channel === "linkedin") && (row?.status === "published" || row?.external_url)) continue;
       const ok = await runChannel(channel, "create", false);
       results.push(`${channel}: ${ok ? "ok" : "failed"}`);
     }
@@ -128,17 +159,12 @@ export default function PublishControls({ eventId, publications, selectedChannel
           return (
             <div className="publishChannel" key={channel.id}>
               <div className="publishRow">
-                <div>
-                  <strong>{channel.label}</strong>
-                  <small>{enabled ? "Selected" : "Not selected"}</small>
-                </div>
+                <div><strong>{channel.label}</strong><small>{enabled ? "Selected" : "Not selected"}</small></div>
                 <span className={`statusPill status-${status}`}>{status.replaceAll("_", " ")}</span>
               </div>
 
               {publication?.last_error ? <p className="channelError">{publication.last_error}</p> : null}
-              {publication?.external_url ? (
-                <a className="secondaryButton inlineButton smallButton" href={publication.external_url} target="_blank" rel="noreferrer">View external</a>
-              ) : null}
+              {publication?.external_url ? <a className="secondaryButton inlineButton smallButton" href={publication.external_url} target="_blank" rel="noreferrer">View external</a> : null}
 
               {writable && (channel.id === "instagram" || channel.id === "linkedin") && status !== "published" ? (
                 <button className="primaryButton smallButton" type="button" disabled={publishing !== null} onClick={() => runChannel(channel.id)}>
@@ -151,15 +177,18 @@ export default function PublishControls({ eventId, publications, selectedChannel
                   <button className="primaryButton smallButton" type="button" disabled={publishing !== null} onClick={() => runChannel(channel.id as LifecycleChannel, hasExternal ? "update" : "create")}>
                     {publishing?.startsWith(channel.id) ? "Working..." : hasExternal ? `Update ${channel.label}` : `Create ${channel.label} draft`}
                   </button>
-                  {hasExternal ? (
-                    <button className="secondaryButton smallButton" type="button" disabled={publishing !== null} onClick={() => runChannel(channel.id as LifecycleChannel, "delete")}>
-                      Delete from {channel.label}
-                    </button>
-                  ) : null}
+                  {hasExternal ? <button className="secondaryButton smallButton" type="button" disabled={publishing !== null} onClick={() => runChannel(channel.id as LifecycleChannel, "delete")}>Delete from {channel.label}</button> : null}
                 </div>
               ) : null}
 
-              {enabled && channel.id === "humanitix" ? <small className="mutedText">Connected read-only. Create/delete manually in Humanitix.</small> : null}
+              {enabled && channel.id === "humanitix" ? (
+                <div className="heroActions">
+                  <button className="secondaryButton smallButton" type="button" disabled={publishing !== null} onClick={checkHumanitix}>
+                    {publishing?.startsWith("humanitix") ? "Checking..." : "Check Humanitix"}
+                  </button>
+                  <small className="mutedText">Read-only: this matches an event already created in Humanitix by title/date.</small>
+                </div>
+              ) : null}
             </div>
           );
         })}
@@ -170,7 +199,7 @@ export default function PublishControls({ eventId, publications, selectedChannel
 
       <div className="publishNotice">
         <strong>Lifecycle controls are enabled for Wix and Eventbrite.</strong>
-        <p>External deletion never deletes the master event from this Hub. Humanitix remains sync/manual because its public API is read-only.</p>
+        <p>External deletion never deletes the master event from this Hub. Humanitix can now be checked and linked read-only when a matching Humanitix event already exists.</p>
       </div>
     </>
   );
