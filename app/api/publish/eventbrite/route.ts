@@ -5,6 +5,10 @@ function eventbriteHeaders(token: string) {
   return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 }
 
+function eventbriteUtc(value: string) {
+  return new Date(value).toISOString().replace(/\.\d{3}Z$/, "Z");
+}
+
 async function resolveOrganizationId(token: string) {
   if (process.env.EVENTBRITE_ORGANIZATION_ID) return process.env.EVENTBRITE_ORGANIZATION_ID;
   const response = await fetch("https://www.eventbriteapi.com/v3/users/me/organizations/", {
@@ -57,8 +61,8 @@ export async function POST(request: NextRequest) {
       event: {
         name: { html: event.title },
         description: { html: event.description || event.short_description || event.title },
-        start: { utc: new Date(event.start_at).toISOString(), timezone: event.timezone || "America/Los_Angeles" },
-        end: { utc: new Date(event.end_at).toISOString(), timezone: event.timezone || "America/Los_Angeles" },
+        start: { utc: eventbriteUtc(event.start_at), timezone: event.timezone || "America/Los_Angeles" },
+        end: { utc: eventbriteUtc(event.end_at), timezone: event.timezone || "America/Los_Angeles" },
         currency: event.currency || "USD",
         listed: false,
         shareable: false,
