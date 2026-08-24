@@ -11,23 +11,28 @@ type CheckState = {
 
 const initial: CheckState = { loading: false, ok: null, message: "Not checked yet" };
 
+type Channel = "facebook" | "instagram" | "linkedin" | "wix" | "eventbrite" | "humanitix";
+
 export default function ConnectionsPage() {
+  const [facebook, setFacebook] = useState<CheckState>(initial);
   const [instagram, setInstagram] = useState<CheckState>(initial);
   const [linkedin, setLinkedin] = useState<CheckState>(initial);
   const [wix, setWix] = useState<CheckState>(initial);
   const [eventbrite, setEventbrite] = useState<CheckState>(initial);
   const [humanitix, setHumanitix] = useState<CheckState>(initial);
 
-  async function validate(channel: "instagram" | "linkedin" | "wix" | "eventbrite" | "humanitix") {
-    const setter = channel === "instagram"
-      ? setInstagram
-      : channel === "linkedin"
-        ? setLinkedin
-        : channel === "wix"
-          ? setWix
-          : channel === "eventbrite"
-            ? setEventbrite
-            : setHumanitix;
+  async function validate(channel: Channel) {
+    const setter = channel === "facebook"
+      ? setFacebook
+      : channel === "instagram"
+        ? setInstagram
+        : channel === "linkedin"
+          ? setLinkedin
+          : channel === "wix"
+            ? setWix
+            : channel === "eventbrite"
+              ? setEventbrite
+              : setHumanitix;
 
     setter({ loading: true, ok: null, message: "Checking connection..." });
 
@@ -40,7 +45,14 @@ export default function ConnectionsPage() {
       }
 
       let label = "Connected";
-      if (channel === "instagram") {
+      if (channel === "facebook") {
+        label = `Connected to ${payload.page?.name || "Facebook Page"} (${payload.page?.id || "page"})`;
+        if (payload.instagramAccount?.id) {
+          label += ` — Instagram @${payload.instagramAccount.username || payload.instagramAccount.id}`;
+        } else {
+          label += " — no linked Instagram professional account returned";
+        }
+      } else if (channel === "instagram") {
         label = `Connected to @${payload.account?.username || payload.account?.id}`;
       } else if (channel === "linkedin") {
         label = `Connected to ${payload.member?.name || payload.member?.email || payload.member?.urn || payload.member?.id || "LinkedIn member"}`;
@@ -81,6 +93,18 @@ export default function ConnectionsPage() {
       </section>
 
       <section className="panel connectionList">
+        <article className="connectionCard">
+          <div>
+            <p className="eyebrow">Social</p>
+            <h2>Facebook</h2>
+            <p>Checks the configured Facebook Page access token and discovers the linked Instagram professional account.</p>
+          </div>
+          <div className={`connectionStatus ${facebook.ok === true ? "isOk" : facebook.ok === false ? "isError" : ""}`}>{facebook.message}</div>
+          <button className="primaryButton" type="button" onClick={() => validate("facebook")} disabled={facebook.loading}>
+            {facebook.loading ? "Checking..." : "Validate Facebook"}
+          </button>
+        </article>
+
         <article className="connectionCard">
           <div>
             <p className="eyebrow">Social</p>
