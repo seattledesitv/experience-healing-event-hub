@@ -12,6 +12,7 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json().catch(() => ({}));
   const eventId = typeof body.eventId === "string" ? body.eventId : "";
+  const action = body.action === "delete" ? "delete" : "create";
   if (!eventId) return NextResponse.json({ error: "eventId is required." }, { status: 400 });
 
   const token = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
@@ -29,6 +30,32 @@ export async function POST(request: NextRequest) {
   if (eventError || !event) return NextResponse.json({ error: eventError?.message || "Event not found." }, { status: 404 });
   if (publicationError || !publication) return NextResponse.json({ error: publicationError?.message || "Facebook publication record not found." }, { status: 404 });
   if (!publication.enabled) return NextResponse.json({ error: "Facebook is not selected for this event." }, { status: 400 });
+
+  if (action === "delete") {
+    if (!publication.external_id) {
+      return NextResponse.json({ deleted: true, alreadyDeleted: true });
+    }
+
+    const deleteUrl = new URL(`https://graph.facebook.com/${version}/${publication.external_id}`);
+    deleteUrl.searchParams.set("access_token", token);
+    const deleteResponse = await fetch(deleteUrl, { method: "DELETE", cache: "no-store" });
+    const deleted = await deleteResponse.json().catch(() => ({}));
+
+    if (!deleteResponse.ok || deleted === false || deleted?.success === false) {
+      return NextResponse.json({ error: deleted?.error?.message || "Facebook delete failed." }, { status: deleteResponse.status || 502 });
+    }
+
+    await supabase.from("event_publications").update({
+      status: "pending",
+      external_id: null,
+      external_url: null,
+      published_at: null,
+      last_error: null,
+    }).eq("id", publication.id);
+
+    return NextResponse.json({ deleted: true, action: "deleted" });
+  }
+
   if (publication.status === "published" || publication.external_id) {
     return NextResponse.json({ published: true, alreadyPublished: true, id: publication.external_id, url: publication.external_url });
   }
