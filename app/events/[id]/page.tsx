@@ -7,6 +7,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import PublishControls from "./PublishControls";
 
 const channels = [
+  { id: "facebook", label: "Facebook" },
   { id: "instagram", label: "Instagram" },
   { id: "linkedin", label: "LinkedIn" },
   { id: "eventbrite", label: "Eventbrite" },
@@ -34,6 +35,7 @@ type EventRecord = {
   currency: string | null;
   capacity: number | null;
   cover_image_url: string | null;
+  facebook_caption: string | null;
   instagram_caption: string | null;
   linkedin_caption: string | null;
   hashtags: string | null;
@@ -154,6 +156,7 @@ export default function EventDetailPage() {
         price_cents: pricingType === "paid" ? Math.round(price * 100) : null,
         currency: text("currency") || "USD",
         capacity: text("capacity") ? Number(text("capacity")) : null,
+        facebook_caption: text("facebook_caption"),
         instagram_caption: text("instagram_caption"),
         linkedin_caption: text("linkedin_caption"),
         hashtags: text("hashtags"),
@@ -198,7 +201,7 @@ export default function EventDetailPage() {
               <div><strong>Capacity</strong><span>{event.capacity || "Not set"}</span></div>
               <div><strong>Registration</strong><span>{event.registration_url || "Not set"}</span></div>
             </div>
-            <div className="reviewCopy"><h3>Description</h3><p>{event.description || "No description."}</p><h3>Instagram copy</h3><p>{event.instagram_caption || "No Instagram caption."}</p><h3>LinkedIn copy</h3><p>{event.linkedin_caption || "No LinkedIn caption."}</p><h3>Hashtags</h3><p>{event.hashtags || "No hashtags."}</p></div>
+            <div className="reviewCopy"><h3>Description</h3><p>{event.description || "No description."}</p><h3>Facebook copy</h3><p>{event.facebook_caption || "Uses the short/full description when blank."}</p><h3>Instagram copy</h3><p>{event.instagram_caption || "No Instagram caption."}</p><h3>LinkedIn copy</h3><p>{event.linkedin_caption || "No LinkedIn caption."}</p><h3>Hashtags</h3><p>{event.hashtags || "No hashtags."}</p></div>
           </article>
           <aside className="panel reviewSidebar"><PublishControls eventId={event.id} publications={publications} selectedChannels={selectedChannels} /></aside>
         </section>
@@ -217,7 +220,7 @@ export default function EventDetailPage() {
         <div className="formSection"><div><p className="eyebrow">Pricing</p><h2>Free or paid event</h2></div><div className="threeCol"><label>Pricing type<select name="pricing_type" defaultValue={event.is_free ? "free" : "paid"}><option value="free">Free / RSVP</option><option value="paid">Paid / Ticketed</option></select></label><label>Ticket price<input name="price" type="number" min="0" step="0.01" defaultValue={event.price_cents ? (event.price_cents / 100).toFixed(2) : ""} /></label><label>Currency<select name="currency" defaultValue={event.currency || "USD"}><option value="USD">USD</option><option value="CAD">CAD</option><option value="EUR">EUR</option><option value="GBP">GBP</option><option value="INR">INR</option></select></label></div><p className="mutedText">Changing a Wix event from RSVP to ticketed (or ticketed to RSVP) requires deleting and recreating the Wix draft because Wix locks the initial registration type.</p></div>
 
         <div className="formSection"><div><p className="eyebrow">Media</p><h2>Current event image</h2></div>{event.cover_image_url ? <img className="eventPreviewImage" src={event.cover_image_url} alt="Current event flyer" /> : <p>No image uploaded.</p>}<p className="mutedText">The Cloudinary source image remains attached to the Hub event.</p></div>
-        <div className="formSection"><div><p className="eyebrow">Social copy</p><h2>Customize by channel</h2></div><label>Instagram caption<textarea name="instagram_caption" rows={5} defaultValue={event.instagram_caption ?? ""} /></label><label>LinkedIn caption<textarea name="linkedin_caption" rows={5} defaultValue={event.linkedin_caption ?? ""} /></label><label>Hashtags<input name="hashtags" defaultValue={event.hashtags ?? ""} /></label></div>
+        <div className="formSection"><div><p className="eyebrow">Social copy</p><h2>Customize by channel</h2></div><label>Facebook caption<textarea name="facebook_caption" rows={5} defaultValue={event.facebook_caption ?? ""} placeholder="Facebook-ready copy..." /></label><label>Instagram caption<textarea name="instagram_caption" rows={5} defaultValue={event.instagram_caption ?? ""} /></label><label>LinkedIn caption<textarea name="linkedin_caption" rows={5} defaultValue={event.linkedin_caption ?? ""} /></label><label>Hashtags<input name="hashtags" defaultValue={event.hashtags ?? ""} /></label></div>
         <div className="formSection"><div><p className="eyebrow">Destinations</p><h2>Select where to publish</h2></div><div className="channelGrid">{channels.map((channel) => { const selected = selectedChannels.includes(channel.id); return <button className={`channel channelButton ${selected ? "selected" : ""}`} type="button" key={channel.id} onClick={() => toggleChannel(channel.id)}><strong>{channel.label}</strong><small>{selected ? "Selected" : "Not selected"}</small></button>; })}</div></div>
         {error ? <p className="formError">{error}</p> : null}{message ? <p className="formSuccess">{message}</p> : null}
         <div className="formActions"><button className="secondaryButton" type="submit" disabled={saving}>{saving ? "Saving..." : "Save changes"}</button><Link className="primaryButton inlineButton" href={`/events/${event.id}?mode=review`}>Review event</Link></div>
