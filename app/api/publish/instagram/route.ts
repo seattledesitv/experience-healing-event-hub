@@ -14,9 +14,9 @@ export async function POST(request: NextRequest) {
   const eventId = typeof body.eventId === "string" ? body.eventId : "";
   if (!eventId) return NextResponse.json({ error: "eventId is required." }, { status: 400 });
 
-  const token = process.env.META_ACCESS_TOKEN;
+  const token = process.env.INSTAGRAM_ACCESS_TOKEN;
   const accountId = process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID;
-  const version = process.env.META_GRAPH_API_VERSION || "v25.0";
+  const version = process.env.META_GRAPH_API_VERSION || "v26.0";
   if (!token || !accountId) {
     return NextResponse.json({ error: "Instagram credentials are not configured." }, { status: 400 });
   }
@@ -37,30 +37,30 @@ export async function POST(request: NextRequest) {
   await supabase.from("event_publications").update({ status: "publishing", last_error: null }).eq("id", publication.id);
 
   try {
-    const createUrl = new URL(`https://graph.facebook.com/${version}/${accountId}/media`);
+    const createUrl = new URL(`https://graph.instagram.com/${version}/${accountId}/media`);
     createUrl.searchParams.set("image_url", event.cover_image_url);
-    const caption = combineCopy(event.instagram_caption, event.hashtags);
+    const caption = combineCopy(event.instagram_caption || event.title, event.hashtags);
     if (caption) createUrl.searchParams.set("caption", caption);
     createUrl.searchParams.set("access_token", token);
 
     const createResponse = await fetch(createUrl, { method: "POST", cache: "no-store" });
-    const created = await createResponse.json();
+    const created = await createResponse.json().catch(() => ({}));
     if (!createResponse.ok || !created.id) throw new Error(created?.error?.message || "Instagram media container creation failed.");
 
-    const publishUrl = new URL(`https://graph.facebook.com/${version}/${accountId}/media_publish`);
+    const publishUrl = new URL(`https://graph.instagram.com/${version}/${accountId}/media_publish`);
     publishUrl.searchParams.set("creation_id", created.id);
     publishUrl.searchParams.set("access_token", token);
     const publishResponse = await fetch(publishUrl, { method: "POST", cache: "no-store" });
-    const published = await publishResponse.json();
+    const published = await publishResponse.json().catch(() => ({}));
     if (!publishResponse.ok || !published.id) throw new Error(published?.error?.message || "Instagram publish failed.");
 
     let permalink: string | null = null;
-    const lookupUrl = new URL(`https://graph.facebook.com/${version}/${published.id}`);
+    const lookupUrl = new URL(`https://graph.instagram.com/${version}/${published.id}`);
     lookupUrl.searchParams.set("fields", "permalink");
     lookupUrl.searchParams.set("access_token", token);
     const lookupResponse = await fetch(lookupUrl, { cache: "no-store" });
     if (lookupResponse.ok) {
-      const lookup = await lookupResponse.json();
+      const lookup = await lookupResponse.json().catch(() => ({}));
       permalink = lookup.permalink || null;
     }
 
