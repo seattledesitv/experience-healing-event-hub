@@ -4,6 +4,7 @@ import { ChangeEvent, FormEvent, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 const channels = [
+  { id: "facebook", label: "Facebook" },
   { id: "instagram", label: "Instagram" },
   { id: "linkedin", label: "LinkedIn" },
   { id: "eventbrite", label: "Eventbrite" },
@@ -21,7 +22,7 @@ function toIso(input: string) {
 }
 
 export default function NewEventPage() {
-  const [selectedChannels, setSelectedChannels] = useState<string[]>(["instagram", "linkedin", "wix"]);
+  const [selectedChannels, setSelectedChannels] = useState<string[]>(["facebook", "instagram", "linkedin", "wix"]);
   const [eventId, setEventId] = useState<string | null>(null);
   const [coverImageUrl, setCoverImageUrl] = useState("");
   const [coverImagePublicId, setCoverImagePublicId] = useState("");
@@ -130,6 +131,7 @@ export default function NewEventPage() {
         capacity: value(form, "capacity") ? Number(value(form, "capacity")) : null,
         cover_image_url: coverImageUrl || null,
         cover_image_public_id: coverImagePublicId || null,
+        facebook_caption: value(form, "facebook_caption") || null,
         instagram_caption: value(form, "instagram_caption") || null,
         linkedin_caption: value(form, "linkedin_caption") || null,
         hashtags: value(form, "hashtags") || null,
@@ -226,6 +228,7 @@ export default function NewEventPage() {
 
         <div className="formSection">
           <div><p className="eyebrow">5. Social copy</p><h2>Customize by channel</h2></div>
+          <label>Facebook caption<textarea name="facebook_caption" rows={5} placeholder="Facebook-ready copy..." /></label>
           <label>Instagram caption<textarea name="instagram_caption" rows={5} placeholder="Instagram-ready caption..." /></label>
           <label>LinkedIn caption<textarea name="linkedin_caption" rows={5} placeholder="LinkedIn-ready copy..." /></label>
           <label>Hashtags<input name="hashtags" placeholder="#ExperienceHealing #Wellness #Seattle" /></label>
