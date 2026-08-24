@@ -51,10 +51,10 @@ export default function PublishControls({ eventId, publications, selectedChannel
 
     if (ask) {
       const isSocial = channel === "facebook" || channel === "instagram" || channel === "linkedin";
-      const warning = isSocial
-        ? `Publish this event to ${label} now? This creates a real public post.`
-        : actualAction === "delete"
-          ? `Delete this event from ${label}? This removes the external event but keeps the master event in this Hub.`
+      const warning = actualAction === "delete"
+        ? `Delete the ${label} post now? This removes the external post but keeps the master event in this Hub.`
+        : isSocial
+          ? `Publish this event to ${label} now? This creates a real public post.`
           : `${actualAction === "update" ? "Update" : "Create"} the ${label} event now? Wix/Eventbrite are created as drafts for review.`;
       if (!window.confirm(warning)) return false;
     }
@@ -75,7 +75,7 @@ export default function PublishControls({ eventId, publications, selectedChannel
 
       if (actualAction === "delete") {
         updateChannel(channel, { status: "pending", external_url: null, last_error: null });
-        setMessage(`${label} event deleted. The master Hub event was kept.`);
+        setMessage(`${label} post deleted. The master Hub event was kept.`);
       } else {
         updateChannel(channel, { status: "published", external_url: payload.url || external?.external_url || null, last_error: null });
         const suffix = channel === "eventbrite" || channel === "wix" ? " draft" : " post";
@@ -175,6 +175,19 @@ export default function PublishControls({ eventId, publications, selectedChannel
                 </button>
               ) : null}
 
+              {enabled && channel.id === "facebook" && hasExternal ? (
+                <div className="heroActions">
+                  <button className="secondaryButton smallButton" type="button" disabled={publishing !== null} onClick={() => runChannel("facebook", "delete")}>Delete from Facebook</button>
+                </div>
+              ) : null}
+
+              {enabled && channel.id === "instagram" && hasExternal ? (
+                <div className="heroActions">
+                  {publication?.external_url ? <a className="secondaryButton inlineButton smallButton" href={publication.external_url} target="_blank" rel="noreferrer">Open Instagram to delete</a> : null}
+                  <small className="mutedText">Instagram publishing API does not expose a supported delete operation for published media, so removal must be done in Instagram.</small>
+                </div>
+              ) : null}
+
               {writable && channel.lifecycle ? (
                 <div className="heroActions">
                   <button className="primaryButton smallButton" type="button" disabled={publishing !== null} onClick={() => runChannel(channel.id as LifecycleChannel, hasExternal ? "update" : "create")}>
@@ -201,8 +214,8 @@ export default function PublishControls({ eventId, publications, selectedChannel
       {message ? <p className="formSuccess publishFeedback">{message}</p> : null}
 
       <div className="publishNotice">
-        <strong>Lifecycle controls are enabled for Wix and Eventbrite.</strong>
-        <p>Social posts are protected from duplicate publishing after a successful post. Humanitix remains read-only.</p>
+        <strong>Lifecycle controls are enabled for Facebook, Wix and Eventbrite.</strong>
+        <p>Facebook posts can be deleted from the Hub. Instagram posts must be removed manually in Instagram. Social posts are protected from duplicate publishing after a successful post.</p>
       </div>
     </>
   );
