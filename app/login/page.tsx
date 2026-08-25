@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -30,27 +31,26 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="shell">
-      <section className="hero compactHero">
+    <main className="authPage">
+      <section className="authBrandPanel">
+        <div className="brandMark large">EH</div>
         <p className="eyebrow">Experience Healing</p>
-        <h1>Admin sign in</h1>
-        <p className="lede">Sign in with your Supabase admin user to manage events and publishing.</p>
+        <h1>Event Hub</h1>
+        <p>Manage events, publishing, and community outreach from one calm, organized workspace.</p>
+        <div className="healingTagline">Restoring hearts · Renewing minds · Transforming lives</div>
       </section>
 
-      <form className="panel authForm" onSubmit={handleSubmit}>
-        <label>
-          Email
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        </label>
-        <label>
-          Password
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-        </label>
-        {error ? <p className="formError">{error}</p> : null}
-        <button className="primaryButton" type="submit" disabled={loading}>
-          {loading ? "Signing in..." : "Sign in"}
-        </button>
-      </form>
+      <section className="authCardWrap">
+        <form className="panel authForm" onSubmit={handleSubmit}>
+          <div><p className="eyebrow">Welcome back</p><h2>Sign in</h2><p className="mutedText">Approved team members can access the Event Hub.</p></div>
+          <label>Email<input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></label>
+          <label>Password<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required /></label>
+          {error ? <p className="formError">{error}</p> : null}
+          <button className="primaryButton" type="submit" disabled={loading}>{loading ? "Signing in..." : "Sign in"}</button>
+          <div className="authDivider"><span>New to the Event Hub?</span></div>
+          <Link className="secondaryButton inlineButton fullButton" href="/signup">Create an account</Link>
+        </form>
+      </section>
     </main>
   );
 }
