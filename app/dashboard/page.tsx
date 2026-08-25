@@ -6,7 +6,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type EventSummary = { id: string; title: string; start_at: string | null; status: string; venue_name: string | null };
 
-const destinations = ["Facebook", "Instagram", "LinkedIn", "Eventbrite", "Humanitix", "Wix"];
+const destinations = ["Facebook", "Instagram", "LinkedIn", "Eventbrite", "Wix"];
 
 export default function DashboardPage() {
   const [events, setEvents] = useState<EventSummary[]>([]);
@@ -38,13 +38,13 @@ export default function DashboardPage() {
 
       <section className="dashboardGrid">
         <article className="panel">
-          <div className="sectionHeading"><div><p className="eyebrow">Next on the calendar</p><h2>Upcoming events</h2></div><Link href="/events?view=calendar" className="textLink">Open calendar →</Link></div>
+          <div className="sectionHeading"><div><p className="eyebrow">Next on the calendar</p><h2>Upcoming events</h2></div><Link href="/events?view=calendar" className="textLink">View in Events calendar →</Link></div>
           <div className="upcomingList">{upcoming.length ? upcoming.map((event) => <Link className="upcomingRow" href={`/events/${event.id}?mode=review`} key={event.id}><div className="dateTile"><strong>{new Date(event.start_at!).getDate()}</strong><span>{new Date(event.start_at!).toLocaleDateString("en-US", { month: "short" })}</span></div><div><strong>{event.title}</strong><span>{event.venue_name || "Venue not set"}</span></div><span className={`statusPill status-${event.status}`}>{event.status}</span></Link>) : <p className="mutedText">No upcoming events yet.</p>}</div>
         </article>
 
         <article className="panel">
           <div className="sectionHeading"><div><p className="eyebrow">Connected ecosystem</p><h2>Publishing channels</h2></div><Link href="/settings/connections" className="textLink">Connections →</Link></div>
-          <div className="destinationList">{destinations.map((destination) => <div className="destinationRow" key={destination}><span className="destinationDot" /><strong>{destination}</strong><small>Ready to validate / publish</small></div>)}</div>
+          <div className="destinationList">{destinations.map((destination) => <div className="destinationRow" key={destination}><span className="destinationDot" /><strong>{destination}</strong><small>Available in the current publishing workflow</small></div>)}</div>
         </article>
       </section>
     </main>
