@@ -1,34 +1,24 @@
-const channels = ["Instagram", "LinkedIn", "Eventbrite", "Humanitix", "Wix"];
+import Link from "next/link";
+
+const channels = ["Facebook", "Instagram", "LinkedIn", "Eventbrite", "Humanitix", "Wix"];
 
 export default function Home() {
   return (
     <main className="shell">
-      <section className="hero">
+      <section className="hero brandedHeader">
+        <div className="brandMark large">EH</div>
         <p className="eyebrow">Experience Healing</p>
         <h1>Event Publishing Hub</h1>
-        <p className="lede">
-          Create an event once, manage its media, and publish it across every connected channel from one place.
-        </p>
+        <p className="lede">Create an event once, manage its media and details, then coordinate publishing across every connected destination from one calm workspace.</p>
         <div className="actions">
-          <a className="primary" href="/events/new">Create Event</a>
-          <a className="secondary" href="/dashboard">Open Dashboard</a>
+          <Link className="primary" href="/login">Sign in</Link>
+          <Link className="secondary" href="/signup">Create account</Link>
         </div>
       </section>
 
       <section className="panel">
-        <div>
-          <p className="eyebrow">Publishing destinations</p>
-          <h2>One source of truth</h2>
-        </div>
-        <div className="channelGrid">
-          {channels.map((channel) => (
-            <article className="channel" key={channel}>
-              <span className="dot" />
-              <strong>{channel}</strong>
-              <small>Connector planned</small>
-            </article>
-          ))}
-        </div>
+        <div className="sectionHeading"><div><p className="eyebrow">One source of truth</p><h2>Connected publishing</h2></div><small>Manage the master event in the Hub while each external destination keeps its own lifecycle.</small></div>
+        <div className="channelGrid">{channels.map((channel) => <article className="channel" key={channel}><span className="destinationDot" /><strong>{channel}</strong><small>Managed from Event Hub</small></article>)}</div>
       </section>
     </main>
   );
