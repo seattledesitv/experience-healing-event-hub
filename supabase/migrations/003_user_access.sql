@@ -50,6 +50,22 @@ drop trigger if exists user_access_set_updated_at on public.user_access;
 create trigger user_access_set_updated_at before update on public.user_access
 for each row execute function public.set_user_access_updated_at();
 
+create or replace function public.is_super_admin(check_user uuid default auth.uid())
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.user_access
+    where user_id = check_user and role = 'super_admin'
+  );
+$$;
+
+revoke all on function public.is_super_admin(uuid) from public;
+grant execute on function public.is_super_admin(uuid) to authenticated;
+
 alter table public.user_access enable row level security;
 
 drop policy if exists "users can read own access" on public.user_access;
@@ -62,17 +78,11 @@ drop policy if exists "super admins can read all access" on public.user_access;
 create policy "super admins can read all access"
 on public.user_access for select
 to authenticated
-using (exists (
-  select 1 from public.user_access me
-  where me.user_id = auth.uid() and me.role = 'super_admin'
-));
+using (public.is_super_admin());
 
 drop policy if exists "super admins can update access" on public.user_access;
 create policy "super admins can update access"
 on public.user_access for update
 to authenticated
-using (exists (
-  select 1 from public.user_access me
-  where me.user_id = auth.uid() and me.role = 'super_admin'
-))
+using (public.is_super_admin())
 with check (role in ('pending','admin','super_admin'));
