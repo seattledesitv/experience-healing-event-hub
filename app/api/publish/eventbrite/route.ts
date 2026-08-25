@@ -142,10 +142,14 @@ export async function POST(request: NextRequest) {
 
   try {
     if (action === "delete") {
-      if (!publication.external_id) return NextResponse.json({ deleted: true, alreadyDeleted: true });
-      const response = await fetch(`https://www.eventbriteapi.com/v3/events/${publication.external_id}/`, { method: "DELETE", headers, cache: "no-store" });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload?.error_description || payload?.error || `Eventbrite delete failed (${response.status}).`);
+      if (publication.external_id) {
+        const response = await fetch(`https://www.eventbriteapi.com/v3/events/${publication.external_id}/`, { method: "DELETE", headers, cache: "no-store" });
+        const payload = await response.json().catch(() => ({}));
+        // If it was already removed directly in Eventbrite, reconcile the Hub instead of leaving stale state.
+        if (!response.ok && response.status !== 404 && response.status !== 410) {
+          throw new Error(payload?.error_description || payload?.error || `Eventbrite delete failed (${response.status}).`);
+        }
+      }
       await supabase.from("event_publications").update({ status: "pending", external_id: null, external_url: null, published_at: null, last_error: null }).eq("id", publication.id);
       return NextResponse.json({ deleted: true });
     }
