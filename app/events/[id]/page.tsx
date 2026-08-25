@@ -11,9 +11,9 @@ const channels = [
   { id: "instagram", label: "Instagram" },
   { id: "linkedin", label: "LinkedIn" },
   { id: "eventbrite", label: "Eventbrite" },
-  { id: "humanitix", label: "Humanitix" },
   { id: "wix", label: "Wix" },
 ];
+const activeChannelIds = new Set(channels.map((channel) => channel.id));
 
 type EventRecord = {
   id: string;
@@ -90,9 +90,10 @@ export default function EventDetailPage() {
         ]);
         if (eventError) throw eventError;
         if (publicationError) throw publicationError;
+        const activePublications = (publicationData ?? []).filter((item) => activeChannelIds.has(item.channel));
         setEvent(eventData as EventRecord);
-        setPublications((publicationData ?? []) as Publication[]);
-        setSelectedChannels((publicationData ?? []).filter((item) => item.enabled).map((item) => item.channel));
+        setPublications(activePublications as Publication[]);
+        setSelectedChannels(activePublications.filter((item) => item.enabled).map((item) => item.channel));
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : "Unable to load event");
       } finally { setLoading(false); }
