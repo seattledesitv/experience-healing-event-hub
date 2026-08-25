@@ -1,13 +1,7 @@
-import { redirect } from "next/navigation";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import AppShell from "@/app/components/AppShell";
+import { requireApprovedUser } from "@/lib/access";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createSupabaseServerClient();
-  const { data } = await supabase.auth.getUser();
-
-  if (!data.user) {
-    redirect("/login");
-  }
-
-  return children;
+  const { access } = await requireApprovedUser();
+  return <AppShell isSuperAdmin={access.role === "super_admin"}>{children}</AppShell>;
 }
