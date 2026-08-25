@@ -56,6 +56,16 @@ export default function ConnectionsPage() {
             <button className="primaryButton" type="button" onClick={() => validate(card.id)} disabled={card.state.loading}>{card.state.loading ? "Checking..." : `Validate ${card.title}`}</button>
           </article>
         ))}
+
+        <article className="connectionCard">
+          <div>
+            <p className="eyebrow">Local discovery</p>
+            <h2>Google Business Profile</h2>
+            <p>Authorize the Google account that manages Experience Healing, then capture the refresh token, Business Profile account ID, and location ID for event-post publishing.</p>
+          </div>
+          <div className="connectionStatus">OAuth setup</div>
+          <a className="primaryButton inlineButton" href="/api/google-business/connect">Connect Google Business</a>
+        </article>
       </section>
     </main>
   );
