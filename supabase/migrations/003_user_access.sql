@@ -63,8 +63,23 @@ as $$
   );
 $$;
 
+create or replace function public.is_approved_user(check_user uuid default auth.uid())
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.user_access
+    where user_id = check_user and role in ('admin','super_admin')
+  );
+$$;
+
 revoke all on function public.is_super_admin(uuid) from public;
+revoke all on function public.is_approved_user(uuid) from public;
 grant execute on function public.is_super_admin(uuid) to authenticated;
+grant execute on function public.is_approved_user(uuid) to authenticated;
 
 alter table public.user_access enable row level security;
 
@@ -86,3 +101,19 @@ on public.user_access for update
 to authenticated
 using (public.is_super_admin())
 with check (role in ('pending','admin','super_admin'));
+
+-- Replace the original broad authenticated-user event policies so pending users
+-- cannot manage events by calling Supabase directly.
+drop policy if exists "authenticated users can manage events" on public.events;
+create policy "approved admins can manage events"
+on public.events for all
+to authenticated
+using (public.is_approved_user())
+with check (public.is_approved_user());
+
+drop policy if exists "authenticated users can manage event publications" on public.event_publications;
+create policy "approved admins can manage event publications"
+on public.event_publications for all
+to authenticated
+using (public.is_approved_user())
+with check (public.is_approved_user());
