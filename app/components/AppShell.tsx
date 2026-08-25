@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 const nav = [
   { href: "/dashboard", label: "Overview", icon: "⌂" },
   { href: "/events", label: "Events", icon: "▤" },
-  { href: "/events?view=calendar", label: "Calendar", icon: "□" },
   { href: "/events/new", label: "Create Event", icon: "+" },
   { href: "/settings/connections", label: "Connections", icon: "◎" },
 ];
@@ -29,8 +28,8 @@ export default function AppShell({ children, isSuperAdmin = false }: { children:
           {nav.map((item) => {
             const active = item.href === "/dashboard"
               ? pathname === "/dashboard"
-              : item.href.startsWith("/events")
-                ? pathname.startsWith(item.href.split("?")[0]) && (item.label !== "Calendar")
+              : item.href === "/events"
+                ? pathname === "/events" || (pathname.startsWith("/events/") && pathname !== "/events/new")
                 : pathname.startsWith(item.href);
             return (
               <Link key={item.label} className={active ? "sideNavItem active" : "sideNavItem"} href={item.href}>
