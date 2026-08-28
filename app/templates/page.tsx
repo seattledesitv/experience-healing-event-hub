@@ -115,7 +115,7 @@ export default function TemplatesPage() {
           <label>Instagram caption<textarea rows={8} value={form.instagram_caption} onChange={(e) => field("instagram_caption", e.target.value)} placeholder={sample} /></label>
           <label>LinkedIn caption<textarea rows={7} value={form.linkedin_caption} onChange={(e) => field("linkedin_caption", e.target.value)} placeholder="LinkedIn-ready copy..." /></label>
           <label>Hashtags<input value={form.hashtags} onChange={(e) => field("hashtags", e.target.value)} placeholder="#experiencehealing #{{month_lower}} #healingcircle" /></label>
-          <p className="mutedText">Use fixed hashtags for evergreen topics and placeholders such as #{{month_lower}} for values that change each event.</p>
+          <p className="mutedText">Use fixed hashtags for evergreen topics and placeholders such as <code>#{{"{{month_lower}}"}}</code> for values that change each event.</p>
           {error ? <p className="formError">{error}</p> : null}{message ? <p className="formSuccess">{message}</p> : null}
           <div className="formActions"><button className="primaryButton" disabled={saving}>{saving ? "Saving..." : editing ? "Update template" : "Save template"}</button>{editing ? <button className="secondaryButton" type="button" onClick={resetForm}>Cancel</button> : null}</div>
         </div>
