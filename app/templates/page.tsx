@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { supportedTemplatePlaceholders } from "@/lib/template-render";
 
 type Template = {
   id: string;
@@ -15,6 +16,7 @@ type Template = {
 };
 
 const emptyTemplate = { name: "", description: "", facebook_caption: "", instagram_caption: "", linkedin_caption: "", hashtags: "" };
+const sample = `[NEW CIRCLE] {{event_title}}\n\n📅 Date: {{event_date}} | {{event_time}}\n📍 Where: {{city}}, {{postal_code}}\n\nRegister now!\n➡️ {{instagram_handle}} OR {{registration_url}}\n\nJoin us for this healing circle and connect with like-minded women in a small, intentional group.`;
 
 export default function TemplatesPage() {
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -87,20 +89,33 @@ export default function TemplatesPage() {
   return (
     <main className="shell">
       <section className="hero compactHero">
-        <div><p className="eyebrow">Reusable content</p><h1>Post templates</h1><p className="lede">Save repeatable event descriptions and social copy, then use them as a starting point for a new event.</p></div>
+        <div><p className="eyebrow">Reusable content</p><h1>Post templates</h1><p className="lede">Save reusable copy with dynamic fields for dates, locations, registration links and event details.</p></div>
         <Link className="secondaryButton inlineButton" href="/events/new">Create event</Link>
+      </section>
+
+      <section className="panel">
+        <p className="eyebrow">Dynamic fields</p>
+        <h2>Use placeholders for anything that changes</h2>
+        <p className="mutedText">When a template is applied, the Event Hub replaces these placeholders using the event details. The rendered copy is saved into the event, so changing the template later will not modify an existing event.</p>
+        <div className="channelGrid">
+          {supportedTemplatePlaceholders.map((item) => <div className="channel" key={item}><strong>{item}</strong></div>)}
+        </div>
+        <div className="reviewCopy">
+          <h3>Example</h3>
+          <pre style={{ whiteSpace: "pre-wrap", margin: 0 }}>{sample}</pre>
+        </div>
       </section>
 
       <form className="panel eventForm" onSubmit={saveTemplate}>
         <div className="formSection">
           <div><p className="eyebrow">{editing ? "Edit template" : "New template"}</p><h2>{editing ? editing.name : "Create reusable copy"}</h2></div>
-          <label>Template name<input value={form.name} onChange={(e) => field("name", e.target.value)} placeholder="Monthly healing workshop" required /></label>
-          <label>Master event description<textarea rows={7} value={form.description} onChange={(e) => field("description", e.target.value)} placeholder="Reusable event description..." /></label>
-          <label>Facebook caption<textarea rows={5} value={form.facebook_caption} onChange={(e) => field("facebook_caption", e.target.value)} placeholder="Facebook-ready copy..." /></label>
-          <label>Instagram caption<textarea rows={5} value={form.instagram_caption} onChange={(e) => field("instagram_caption", e.target.value)} placeholder="Instagram-ready copy..." /></label>
-          <label>LinkedIn caption<textarea rows={5} value={form.linkedin_caption} onChange={(e) => field("linkedin_caption", e.target.value)} placeholder="LinkedIn-ready copy..." /></label>
-          <label>Hashtags<input value={form.hashtags} onChange={(e) => field("hashtags", e.target.value)} placeholder="#ExperienceHealing #Wellness" /></label>
-          <p className="mutedText">Templates are starting points only. Applying one to an event does not lock the text—you can edit everything before saving or publishing.</p>
+          <label>Template name<input value={form.name} onChange={(e) => field("name", e.target.value)} placeholder="Women's Full Moon Healing Circle" required /></label>
+          <label>Master event description<textarea rows={10} value={form.description} onChange={(e) => field("description", e.target.value)} placeholder={sample} /></label>
+          <label>Facebook caption<textarea rows={7} value={form.facebook_caption} onChange={(e) => field("facebook_caption", e.target.value)} placeholder="Facebook-ready copy with {{event_date}}, {{city}}, etc..." /></label>
+          <label>Instagram caption<textarea rows={8} value={form.instagram_caption} onChange={(e) => field("instagram_caption", e.target.value)} placeholder={sample} /></label>
+          <label>LinkedIn caption<textarea rows={7} value={form.linkedin_caption} onChange={(e) => field("linkedin_caption", e.target.value)} placeholder="LinkedIn-ready copy..." /></label>
+          <label>Hashtags<input value={form.hashtags} onChange={(e) => field("hashtags", e.target.value)} placeholder="#experiencehealing #{{month_lower}} #healingcircle" /></label>
+          <p className="mutedText">Use fixed hashtags for evergreen topics and placeholders such as #{{month_lower}} for values that change each event.</p>
           {error ? <p className="formError">{error}</p> : null}{message ? <p className="formSuccess">{message}</p> : null}
           <div className="formActions"><button className="primaryButton" disabled={saving}>{saving ? "Saving..." : editing ? "Update template" : "Save template"}</button>{editing ? <button className="secondaryButton" type="button" onClick={resetForm}>Cancel</button> : null}</div>
         </div>
