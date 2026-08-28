@@ -25,6 +25,7 @@ type Template = {
 };
 
 type Preview = {
+  title: string;
   description: string;
   facebook: string;
   instagram: string;
@@ -84,8 +85,11 @@ export default function NewEventPage() {
   function updatePreview() {
     if (!template || !formRef.current) { setPreview(null); return; }
     const form = new FormData(formRef.current);
-    const vars = valuesFromForm(form);
+    const baseVars = valuesFromForm(form);
+    const title = renderTemplate(value(form, "title") || template.name, baseVars);
+    const vars = { ...baseVars, event_title: title };
     setPreview({
+      title,
       description: renderTemplate(template.description, vars),
       facebook: renderTemplate(template.facebook_caption, vars),
       instagram: renderTemplate(template.instagram_caption, vars),
@@ -129,13 +133,18 @@ export default function NewEventPage() {
       const supabase = createSupabaseBrowserClient();
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) { window.location.href = "/login"; return; }
-      const title = value(form, "title");
-      if (!title) throw new Error("Event title is required.");
+
+      const titlePattern = value(form, "title");
+      if (!titlePattern) throw new Error("Event title is required.");
+      if (titlePattern.includes("{{month}}") && !value(form, "start_at")) throw new Error("Choose the event start date so {{month}} can be filled in the event title.");
+
       const pricingType = value(form, "pricing_type") || "free";
       const price = Number(value(form, "price"));
       if (pricingType === "paid" && (!Number.isFinite(price) || price <= 0)) throw new Error("Enter a ticket price greater than 0 for a paid event.");
 
-      const vars = valuesFromForm(form);
+      const baseVars = valuesFromForm(form);
+      const title = template ? renderTemplate(titlePattern, baseVars) : titlePattern;
+      const vars = { ...baseVars, event_title: title };
       const rendered = {
         description: template ? renderTemplate(value(form, "description"), vars) : value(form, "description"),
         facebook: template ? renderTemplate(value(form, "facebook_caption"), vars) : value(form, "facebook_caption"),
@@ -143,7 +152,7 @@ export default function NewEventPage() {
         linkedin: template ? renderTemplate(value(form, "linkedin_caption"), vars) : value(form, "linkedin_caption"),
         hashtags: template ? renderTemplate(value(form, "hashtags"), vars) : value(form, "hashtags"),
       };
-      const unresolved = unresolvedPlaceholders(Object.values(rendered).join("\n"));
+      const unresolved = unresolvedPlaceholders([title, ...Object.values(rendered)].join("\n"));
       if (unresolved.length) throw new Error(`Fill the event fields required by these template placeholders or remove them: ${unresolved.join(", ")}`);
 
       const payload = {
@@ -196,14 +205,14 @@ export default function NewEventPage() {
   return (
     <main className="shell">
       <section className="hero"><div><p className="eyebrow">Event Studio</p><h1>Create once. Publish everywhere.</h1><p className="lede">Build the master Experience Healing event, upload one source image, and select only the destinations you actively use.</p></div><Link className="secondaryButton inlineButton" href="/templates">Post templates</Link></section>
-      {template ? <section className="panel"><p className="eyebrow">Template applied</p><h2>{template.name}</h2><p className="mutedText">Fill the event details first, then use the rendered preview below to verify dynamic dates, times, location and registration links before saving.</p></section> : null}
+      {template ? <section className="panel"><p className="eyebrow">Template applied</p><h2>{template.name}</h2><p className="mutedText">The template title is copied into the event title. You can use {{"{{month}}"}} in that title and it will be replaced from the event start date when saved.</p></section> : null}
       <form ref={formRef} key={template?.id || "blank"} className="panel eventForm" onSubmit={saveDraft} onChange={updatePreview}>
-        <div className="formSection"><div><p className="eyebrow">1. Event details</p><h2>Core information</h2></div><label>Event title<input name="title" placeholder="September Full Moon Women's Healing Circle" required /></label><label>Short description<input name="short_description" placeholder="A calming evening of guided healing and connection." /></label><label>Full description<textarea name="description" rows={9} defaultValue={template?.description || ""} placeholder="Tell guests what to expect..." /></label><div className="twoCol"><label>Starts<input name="start_at" type="datetime-local" /></label><label>Ends<input name="end_at" type="datetime-local" /></label></div></div>
+        <div className="formSection"><div><p className="eyebrow">1. Event details</p><h2>Core information</h2></div><label>Event title<input name="title" defaultValue={template?.name || ""} placeholder="{{month}} Full Moon Women's Healing Circle" required /></label><p className="mutedText">When using a template, its title is copied here. Example: {"{{month}}"} Full Moon Women's Healing Circle.</p><label>Short description<input name="short_description" placeholder="A calming evening of guided healing and connection." /></label><label>Full description<textarea name="description" rows={9} defaultValue={template?.description || ""} placeholder="Tell guests what to expect..." /></label><div className="twoCol"><label>Starts<input name="start_at" type="datetime-local" /></label><label>Ends<input name="end_at" type="datetime-local" /></label></div></div>
         <div className="formSection"><div><p className="eyebrow">2. Location & registration</p><h2>Where people join</h2></div><label>Venue name<input name="venue_name" placeholder="Experience Healing Studio" /></label><label>Address line 1<input name="address_line1" placeholder="123 Main Street" /></label><label>Address line 2<input name="address_line2" placeholder="Suite / Unit (optional)" /></label><div className="threeCol"><label>City<input name="city" /></label><label>State<input name="state" defaultValue="WA" /></label><label>ZIP<input name="postal_code" /></label></div><div className="twoCol"><label>Country<input name="country" defaultValue="US" /></label><label>Capacity<input name="capacity" type="number" min="1" placeholder="Optional" /></label></div><label>Registration URL<input name="registration_url" type="url" placeholder="https://..." /></label></div>
         <div className="formSection"><div><p className="eyebrow">3. Pricing</p><h2>Free or paid event</h2></div><div className="threeCol"><label>Pricing type<select name="pricing_type" defaultValue="free"><option value="free">Free / RSVP</option><option value="paid">Paid / Ticketed</option></select></label><label>Ticket price<input name="price" type="number" min="0" step="0.01" placeholder="25.00" /></label><label>Currency<select name="currency" defaultValue="USD"><option value="USD">USD</option><option value="CAD">CAD</option><option value="EUR">EUR</option><option value="GBP">GBP</option><option value="INR">INR</option></select></label></div><p className="mutedText">For paid events, enter the standard/general-admission ticket price. Wix and Eventbrite will use this when their ticket definitions are created.</p></div>
         <div className="formSection"><div><p className="eyebrow">4. Media</p><h2>Event image</h2></div><div className="uploadBox"><strong>Upload event flyer or photo</strong><span>Stored in Cloudinary and reused for each publishing destination.</span><input type="file" accept="image/*" onChange={uploadImage} disabled={uploading} />{uploading ? <small>Uploading...</small> : null}{coverImageUrl ? <img className="eventPreviewImage" src={coverImageUrl} alt="Event flyer preview" /> : null}</div></div>
         <div className="formSection"><div><p className="eyebrow">5. Social copy</p><h2>Customize by channel</h2></div><label>Facebook caption<textarea name="facebook_caption" rows={7} defaultValue={template?.facebook_caption || ""} placeholder="Facebook-ready copy..." /></label><label>Instagram caption<textarea name="instagram_caption" rows={8} defaultValue={template?.instagram_caption || ""} placeholder="Instagram-ready caption..." /></label><label>LinkedIn caption<textarea name="linkedin_caption" rows={7} defaultValue={template?.linkedin_caption || ""} placeholder="LinkedIn-ready copy..." /></label><label>Hashtags<input name="hashtags" defaultValue={template?.hashtags || ""} placeholder="#ExperienceHealing #Wellness #Seattle" /></label></div>
-        {template ? <div className="formSection"><div><p className="eyebrow">6. Rendered preview</p><h2>What will be saved</h2></div>{preview ? <div className="reviewCopy"><h3>Instagram</h3><p style={{ whiteSpace: "pre-wrap" }}>{preview.instagram || "No Instagram copy in this template."}</p><h3>Master description</h3><p style={{ whiteSpace: "pre-wrap" }}>{preview.description || "No master description."}</p><h3>Hashtags</h3><p>{preview.hashtags || "No hashtags."}</p></div> : <p className="mutedText">Start entering the event title, date/time, location and registration URL to render the template.</p>}</div> : null}
+        {template ? <div className="formSection"><div><p className="eyebrow">6. Rendered preview</p><h2>What will be saved</h2></div>{preview ? <div className="reviewCopy"><h3>Event title</h3><p>{preview.title || "Enter an event start date to render the title."}</p><h3>Instagram</h3><p style={{ whiteSpace: "pre-wrap" }}>{preview.instagram || "No Instagram copy in this template."}</p><h3>Master description</h3><p style={{ whiteSpace: "pre-wrap" }}>{preview.description || "No master description."}</p><h3>Hashtags</h3><p>{preview.hashtags || "No hashtags."}</p></div> : <p className="mutedText">Start entering the event date/time, location and registration URL to render the template.</p>}</div> : null}
         <div className="formSection"><div><p className="eyebrow">{template ? "7" : "6"}. Destinations</p><h2>Select where to publish</h2></div><div className="channelGrid">{channels.map((channel) => { const selected = selectedChannels.includes(channel.id); return <button className={`channel channelButton ${selected ? "selected" : ""}`} type="button" key={channel.id} onClick={() => toggleChannel(channel.id)}><strong>{channel.label}</strong><small>{selected ? "Selected" : "Not selected"}</small></button>; })}</div></div>
         {error ? <p className="formError">{error}</p> : null}{message ? <p className="formSuccess">{message}</p> : null}
         <div className="formActions"><button className="secondaryButton" type="submit" disabled={saving}>{saving ? "Saving..." : "Save draft"}</button><button className="primaryButton" type="button" disabled={!eventId} onClick={() => eventId && (window.location.href = `/events/${eventId}?mode=review`)}>Review event</button></div>
