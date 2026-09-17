@@ -7,52 +7,16 @@ const nav = [
   { href: "/dashboard", label: "Overview", icon: "⌂" },
   { href: "/events", label: "Events", icon: "▤" },
   { href: "/events/new", label: "Create Event", icon: "+" },
+  { href: "/posts", label: "Publishing Studio", icon: "◉" },
+  { href: "/posts/new", label: "Create Post", icon: "+" },
   { href: "/templates", label: "Templates", icon: "✎" },
   { href: "/settings/connections", label: "Connections", icon: "◎" },
 ];
 
 export default function AppShell({ children, isSuperAdmin = false }: { children: React.ReactNode; isSuperAdmin?: boolean }) {
   const pathname = usePathname();
-
-  return (
-    <div className="appFrame">
-      <aside className="appSidebar">
-        <div className="brandBlock">
-          <div className="brandMark">EH</div>
-          <div>
-            <strong>Experience Healing</strong>
-            <span>Event Hub</span>
-          </div>
-        </div>
-
-        <nav className="sideNav">
-          {nav.map((item) => {
-            const active = item.href === "/dashboard"
-              ? pathname === "/dashboard"
-              : item.href === "/events"
-                ? pathname === "/events" || (pathname.startsWith("/events/") && pathname !== "/events/new")
-                : pathname.startsWith(item.href);
-            return (
-              <Link key={item.label} className={active ? "sideNavItem active" : "sideNavItem"} href={item.href}>
-                <span className="sideNavIcon">{item.icon}</span>
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
-          {isSuperAdmin ? (
-            <Link className={pathname.startsWith("/admin/users") ? "sideNavItem active" : "sideNavItem"} href="/admin/users">
-              <span className="sideNavIcon">♙</span><span>Users & Access</span>
-            </Link>
-          ) : null}
-        </nav>
-
-        <div className="sidebarQuote">
-          <span>Heal your past</span>
-          <strong>Restore your present</strong>
-          <span>Embrace your future</span>
-        </div>
-      </aside>
-      <div className="appContent">{children}</div>
-    </div>
-  );
+  return <div className="appFrame"><aside className="appSidebar"><div className="brandBlock"><div className="brandMark">EH</div><div><strong>Experience Healing</strong><span>Publishing Hub</span></div></div><nav className="sideNav">
+    {nav.map((item) => { const active = item.href === "/dashboard" ? pathname === "/dashboard" : item.href === "/events" ? pathname === "/events" || (pathname.startsWith("/events/") && pathname !== "/events/new") : item.href === "/posts" ? pathname === "/posts" || (pathname.startsWith("/posts/") && pathname !== "/posts/new") : pathname.startsWith(item.href); return <Link key={item.label} className={active ? "sideNavItem active" : "sideNavItem"} href={item.href}><span className="sideNavIcon">{item.icon}</span><span>{item.label}</span></Link>; })}
+    {isSuperAdmin ? <Link className={pathname.startsWith("/admin/users") ? "sideNavItem active" : "sideNavItem"} href="/admin/users"><span className="sideNavIcon">♙</span><span>Users & Access</span></Link> : null}
+  </nav><div className="sidebarQuote"><span>Heal your past</span><strong>Restore your present</strong><span>Embrace your future</span></div></aside><div className="appContent">{children}</div></div>;
 }
