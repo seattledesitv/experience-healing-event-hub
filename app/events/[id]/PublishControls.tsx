@@ -4,15 +4,16 @@ import { useMemo, useState } from "react";
 
 type Publication = { channel: string; enabled: boolean; status: string; external_url: string | null; last_error: string | null };
 type Props = { eventId: string; publications: Publication[]; selectedChannels: string[] };
-type WritableChannel = "facebook" | "instagram" | "linkedin" | "eventbrite" | "wix";
-type LifecycleChannel = "eventbrite" | "wix";
+type WritableChannel = "facebook" | "instagram" | "linkedin" | "eventbrite" | "wix" | "google_business";
+type LifecycleChannel = "eventbrite" | "wix" | "google_business";
 
 const channels = [
-  { id: "facebook", label: "Facebook", publishable: true, lifecycle: false },
-  { id: "instagram", label: "Instagram", publishable: true, lifecycle: false },
-  { id: "linkedin", label: "LinkedIn", publishable: true, lifecycle: false },
-  { id: "eventbrite", label: "Eventbrite", publishable: true, lifecycle: true },
-  { id: "wix", label: "Wix", publishable: true, lifecycle: true },
+  { id: "facebook", label: "Facebook", lifecycle: false },
+  { id: "instagram", label: "Instagram", lifecycle: false },
+  { id: "linkedin", label: "LinkedIn", lifecycle: false },
+  { id: "eventbrite", label: "Eventbrite", lifecycle: true },
+  { id: "wix", label: "Wix", lifecycle: true },
+  { id: "google_business", label: "Google Business", lifecycle: true },
 ] as const;
 
 export default function PublishControls({ eventId, publications, selectedChannels }: Props) {
@@ -31,13 +32,14 @@ export default function PublishControls({ eventId, publications, selectedChannel
   async function runChannel(channel: WritableChannel, action: "create" | "update" | "delete" = "create", ask = true) {
     const label = channels.find((item) => item.id === channel)?.label || channel;
     const external = publicationMap.get(channel);
-    const actualAction = action === "create" && external?.external_url ? "update" : action;
+    const actualAction = action === "create" && (external?.external_url || external?.status === "published") ? "update" : action;
     if (ask) {
       const isSocial = channel === "facebook" || channel === "instagram" || channel === "linkedin";
+      const isGoogle = channel === "google_business";
       const warning = actualAction === "delete"
         ? `Delete the ${label} item now? This removes the external item but keeps the event in this Hub.`
-        : isSocial
-          ? `Publish this event to ${label} now? This creates a real public post.`
+        : isSocial || isGoogle
+          ? `${actualAction === "update" ? "Update" : "Publish"} this event on ${label} now? This affects the public destination.`
           : `${actualAction === "update" ? "Update" : "Create"} the ${label} event now? Wix/Eventbrite are created as drafts for review.`;
       if (!window.confirm(warning)) return false;
     }
@@ -66,7 +68,7 @@ export default function PublishControls({ eventId, publications, selectedChannel
   async function publishSelected() {
     const selected = channels.filter((item) => selectedChannels.includes(item.id)).map((item) => item.id as WritableChannel);
     if (!selected.length) return;
-    if (!window.confirm("Run all selected destinations? Facebook, Instagram and LinkedIn create real public posts; Wix/Eventbrite create drafts for review.")) return;
+    if (!window.confirm("Run all selected destinations? Facebook, Instagram, LinkedIn and Google Business publish publicly; Wix/Eventbrite create drafts for review.")) return;
     const results: string[] = [];
     for (const channel of selected) {
       const row = publicationMap.get(channel);
@@ -81,7 +83,7 @@ export default function PublishControls({ eventId, publications, selectedChannel
     <>
       <p className="eyebrow">Publishing destinations</p><h2>Channel readiness</h2>
       <button className="primaryButton" type="button" disabled={publishing !== null} onClick={publishSelected}>{publishing ? "Working..." : "Publish / Create Selected"}</button>
-      <p className="mutedText">Facebook, Instagram and LinkedIn publish publicly. Wix and Eventbrite are created as drafts for review.</p>
+      <p className="mutedText">Facebook, Instagram, LinkedIn and Google Business publish publicly. Wix and Eventbrite are created as drafts for review.</p>
       <div className="publishList">
         {channels.map((channel) => {
           const publication = publicationMap.get(channel.id);
@@ -97,13 +99,13 @@ export default function PublishControls({ eventId, publications, selectedChannel
               {enabled && isSocial && status !== "published" ? <button className="primaryButton smallButton" type="button" disabled={publishing !== null} onClick={() => runChannel(channel.id as WritableChannel)}>{publishing?.startsWith(channel.id) ? "Working..." : `Publish to ${channel.label}`}</button> : null}
               {enabled && channel.id === "facebook" && hasExternal ? <button className="secondaryButton smallButton" type="button" disabled={publishing !== null} onClick={() => runChannel("facebook", "delete")}>Delete from Facebook</button> : null}
               {enabled && channel.id === "instagram" && hasExternal ? <div className="heroActions">{publication?.external_url ? <a className="secondaryButton inlineButton smallButton" href={publication.external_url} target="_blank" rel="noreferrer">Open Instagram to delete</a> : null}<small className="mutedText">Instagram removal is done directly in Instagram.</small></div> : null}
-              {enabled && channel.lifecycle ? <div className="heroActions"><button className="primaryButton smallButton" type="button" disabled={publishing !== null} onClick={() => runChannel(channel.id as LifecycleChannel, hasExternal ? "update" : "create")}>{publishing?.startsWith(channel.id) ? "Working..." : hasExternal ? `Update ${channel.label}` : `Create ${channel.label} draft`}</button>{hasExternal ? <button className="secondaryButton smallButton" type="button" disabled={publishing !== null} onClick={() => runChannel(channel.id as LifecycleChannel, "delete")}>Delete from {channel.label}</button> : null}</div> : null}
+              {enabled && channel.lifecycle ? <div className="heroActions"><button className="primaryButton smallButton" type="button" disabled={publishing !== null} onClick={() => runChannel(channel.id as LifecycleChannel, hasExternal ? "update" : "create")}>{publishing?.startsWith(channel.id) ? "Working..." : hasExternal ? `Update ${channel.label}` : channel.id === "google_business" ? "Publish Google Business event" : `Create ${channel.label} draft`}</button>{hasExternal ? <button className="secondaryButton smallButton" type="button" disabled={publishing !== null} onClick={() => runChannel(channel.id as LifecycleChannel, "delete")}>Delete from {channel.label}</button> : null}</div> : null}
             </div>
           );
         })}
       </div>
       {error ? <p className="formError publishFeedback">{error}</p> : null}{message ? <p className="formSuccess publishFeedback">{message}</p> : null}
-      <div className="publishNotice"><strong>Active workflow: Facebook, Instagram, LinkedIn, Eventbrite and Wix.</strong><p>Humanitix is intentionally hidden while its integration is read-only. We can revisit additional ticketing platforms later.</p></div>
+      <div className="publishNotice"><strong>Active workflow: Facebook, Instagram, LinkedIn, Eventbrite, Wix and Google Business.</strong><p>Google Business creates a public Event post using the master event title, schedule, description, image and registration link.</p></div>
     </>
   );
 }
