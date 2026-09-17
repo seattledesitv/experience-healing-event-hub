@@ -5,7 +5,7 @@ import Link from "next/link";
 
 type CheckState = { loading: boolean; ok: boolean | null; message: string };
 const initial: CheckState = { loading: false, ok: null, message: "Not checked yet" };
-type Channel = "facebook" | "instagram" | "linkedin" | "wix" | "eventbrite";
+type Channel = "facebook" | "instagram" | "linkedin" | "wix" | "eventbrite" | "google-business";
 
 export default function ConnectionsPage() {
   const [facebook, setFacebook] = useState<CheckState>(initial);
@@ -13,9 +13,10 @@ export default function ConnectionsPage() {
   const [linkedin, setLinkedin] = useState<CheckState>(initial);
   const [wix, setWix] = useState<CheckState>(initial);
   const [eventbrite, setEventbrite] = useState<CheckState>(initial);
+  const [googleBusiness, setGoogleBusiness] = useState<CheckState>(initial);
 
   async function validate(channel: Channel) {
-    const setter = channel === "facebook" ? setFacebook : channel === "instagram" ? setInstagram : channel === "linkedin" ? setLinkedin : channel === "wix" ? setWix : setEventbrite;
+    const setter = channel === "facebook" ? setFacebook : channel === "instagram" ? setInstagram : channel === "linkedin" ? setLinkedin : channel === "wix" ? setWix : channel === "google-business" ? setGoogleBusiness : setEventbrite;
     setter({ loading: true, ok: null, message: "Checking connection..." });
     try {
       const response = await fetch(`/api/connections/${channel}`, { cache: "no-store" });
@@ -26,6 +27,7 @@ export default function ConnectionsPage() {
       else if (channel === "instagram") label = `Connected to @${payload.account?.username || payload.account?.id}`;
       else if (channel === "linkedin") label = `Connected to ${payload.member?.name || payload.member?.email || payload.member?.urn || payload.member?.id || "LinkedIn member"}`;
       else if (channel === "wix") label = `Connected to Wix site ${payload.site?.id || "configured site"}`;
+      else if (channel === "google-business") label = `Connected to ${payload.location?.title || "Google Business Profile"}`;
       else if (payload.organization) label = `Connected to ${payload.organization.name || "Eventbrite organization"} (${payload.organization.id})`;
       else label = `Connected to Eventbrite ${payload.user?.name || "account"}`;
       setter({ loading: false, ok: true, message: label });
@@ -40,6 +42,7 @@ export default function ConnectionsPage() {
     { id: "linkedin" as const, group: "Social", title: "LinkedIn", description: "Checks the authenticated LinkedIn profile and publishing access token.", state: linkedin },
     { id: "wix" as const, group: "Ticketing & events", title: "Wix Events", description: "Checks the configured Experience Healing Wix site and Wix Events API access.", state: wix },
     { id: "eventbrite" as const, group: "Ticketing & events", title: "Eventbrite", description: "Checks the configured Eventbrite token and organization access.", state: eventbrite },
+    { id: "google-business" as const, group: "Local discovery", title: "Google Business Profile", description: "Checks the saved Google OAuth refresh token and verifies the configured Experience Healing Business Profile location.", state: googleBusiness },
   ];
 
   return (
@@ -59,12 +62,12 @@ export default function ConnectionsPage() {
 
         <article className="connectionCard">
           <div>
-            <p className="eyebrow">Local discovery</p>
-            <h2>Google Business Profile</h2>
-            <p>Authorize the Google account that manages Experience Healing, then capture the refresh token, Business Profile account ID, and location ID for event-post publishing.</p>
+            <p className="eyebrow">Google OAuth</p>
+            <h2>Reconnect Google Business</h2>
+            <p>Use this only when you intentionally need to replace or renew the saved Google Business authorization.</p>
           </div>
-          <div className="connectionStatus">OAuth setup</div>
-          <a className="primaryButton inlineButton" href="/api/google-business/connect">Connect Google Business</a>
+          <div className="connectionStatus">Optional</div>
+          <a className="secondaryButton inlineButton" href="/api/google-business/connect">Reconnect Google Business</a>
         </article>
       </section>
     </main>
